@@ -122,3 +122,77 @@ npm i dotenv
 
   
 
+# 路由
+
+路由：根据不同的URL，调用对应的处理函数
+
+## 1 安装路由中间件
+
+通过命令`npm i koa-router`
+
+步骤：
+
+- 导入
+- 实例化对象
+- 编写路由
+- 注册中间件
+
+```js
+// 导入路由
+const Router = require('koa-router');
+// 实例化路由对象
+const indexRouter = new Router();
+const userRouter = new Router();
+// 编写路由
+indexRouter.get('/', (ctx, next) => {
+  ctx.body = 'This is router from index';
+});
+userRouter.get('/users', (ctx, next) => {
+  ctx.body = 'This is router from users';
+});
+// 注册中间件，中间件必须是一个函数，所以调用的是koa-router的routes()函数
+app.use(indexRouter.routes());
+app.use(userRouter.routes());
+```
+
+## 2 重构路由
+
+如果将所有的路由处理都写在main文件中，且每次都要
+
+- 实例化
+- 编写路由
+- 注册
+
+会让main显得特别的拖沓
+
+所以将route模块独立出来，解耦
+
+- 在src目录下创建一个文件夹router用于处理所有的路由
+- 将所有的路由细分，如：处理/users/的路由，定义为：user.route.js
+
+```js
+// 将main中的路由部分转移到这里
+// 导入路由中间件
+const Router = require('koa-router');
+// 实例化
+// prefix参数是默认拼接参数，即：prefix+处理函数中的路径，才是最终的路由
+const userRouter = new Router({ prefix: '/users' });
+
+// 处理Get，最终实际获得：prefix+路径 = /users/
+// 第一个参数是路径，第二个参数是回调处理函数
+userRouter.get('/', (ctx, next) => {
+  ctx.body = 'hello users';
+});
+
+// 导出userRouter
+module.exports = userRouter;
+
+-----------------------------------------------------------------
+// main中的调用
+// 导入路由文件
+const userRouter = require('./router/user.route');
+
+// 注册路由中间件
+app.use(userRouter.routes())
+```
+
