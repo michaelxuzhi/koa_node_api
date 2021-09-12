@@ -65,6 +65,12 @@ app.listen(3000, () => {
 
   ![image-20210905153304973](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210905153304973.png)
 
+- 工具优化更新：
+  - 由于nodemon只是开发时需要用到，所以不需要把它放到dependencies中
+  - 卸载依赖：`npn un xxx`
+  - 在安装的时候，使用`npm i xxx -D `将依赖安装到dev开发环境中
+  - ![image-20210913000221283](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210913000221283.png)
+
 ## 2 读取配置文件
 
 - 安装 `npm i dotenv`
@@ -122,7 +128,7 @@ npm i dotenv
 
   
 
-# 路由
+# 四、路由
 
 路由：根据不同的URL，调用对应的处理函数
 
@@ -195,4 +201,116 @@ const userRouter = require('./router/user.route');
 // 注册路由中间件
 app.use(userRouter.routes())
 ```
+
+# 五、项目目录结构优化
+
+## 1、将http服务和app业务拆分
+
+创建`src/app/index`目录
+
+app目录下创建index.js文件，用作项目业务相关代码目录
+
+```js
+// index.js
+// 导入
+// Koa
+const Koa = require('koa');
+// 路由
+const userRouter = require('../router/user.route');
+
+// 实例化
+// Koa的实例
+const app = new Koa();
+// 注册中间件，路由中间件的实例
+app.use(userRouter.routes());
+
+// 导出
+// 给main.js中使用
+module.exports = app;
+```
+
+## 2、改写main.js 入口文件
+
+```js
+// 导入
+// 导入index中实例化的Koa
+const app = require('./app/index');
+// 导入config文件
+const { APP_PORT } = require('./config/config.default');
+
+app.listen(APP_PORT, () => {
+  console.log(`server is running on http://localhost:${APP_PORT}`);
+  //   console.log(`server is running on http://localhost:/3000`);
+});
+```
+
+## 3、路由业务的抽离
+
+将路由中的回调处理函数抽离，集成在`controller`目录，在router中调用时，采用结构赋值的方式，使用某个模块下的某个界面的路由
+
+- 针对用户的路由处理：`user.controller.js`
+
+```js
+// user.controller.js文件
+class userController {
+  async register(ctx, next) {
+    ctx.body = '用户注册成功';
+  }
+}
+
+// 导出
+// 不直接导出这个类，而是导出这个类实例化出的对象
+// 导出给user.route.js使用
+module.exports = new userController();
+
+------------------------------------------------------------------
+// 路由模块的导入和使用
+// 新版：通过controller下的对应处理文件来触发回调
+// require的是controller中实例化出来的一个对象，我们要使用的是对象中的一个方法，所以进行解构
+const { register } = require('../controller/user.controller');
+
+// 根据接口文档，使用正确的http方式：(get/post...)
+userRouter.post('/register', register);
+
+
+```
+
+## 4、postman的使用
+
+1、创建一个项目文件夹
+
+`商城项目`
+
+2、创建模块文件夹
+
+`用户模块`
+
+3、接口文件
+
+`用户注册接口`、`用户登录接口`
+
+![image-20210912230441351](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210912230441351.png)
+
+4、创建环境
+
+开发环境：dev_env
+![image-20210912230536495](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210912230536495.png)
+
+5、在接口文件中选择正确的环境，填写对应的URL
+
+![image-20210912230700595](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210912230700595.png)
+
+6、接口测试：点击send，看返回的结果
+
+![image-20210912230754875](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210912230754875.png)
+
+
+
+# 六、解析body
+
+1、安装koa-body中间件
+
+`npm i koa-body`
+
+2、注意事项：解析body，必须要在router之前，否则不生效
 
