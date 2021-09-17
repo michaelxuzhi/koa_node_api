@@ -65,7 +65,8 @@ app.listen(3000, () => {
 
   ![image-20210905153304973](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210905153304973.png)
 
-- 工具优化更新：
+- **工具优化更新**：
+  
   - 由于nodemon只是开发时需要用到，所以不需要把它放到dependencies中
   - 卸载依赖：`npn un xxx`
   - 在安装的时候，使用`npm i xxx -D `将依赖安装到dev开发环境中
@@ -314,3 +315,32 @@ userRouter.post('/register', register);
 
 2、注意事项：解析body，必须要在router之前，否则不生效
 
+3、在postman配置post的数据
+![image-20210917231932219](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210917231932219.png)
+
+4、去到路由处理文件controller.js中，在对应的接口下设置查看post的数据
+
+```js
+async register(ctx, next) {
+    // 控制台看一下请求体
+    console.log(ctx.request.body); // 使用post方法时，在postman上配置request内容，可以在控制台打印出来
+    // 如果客户端也要查看请求体的内容，就赋值给ctx.body，客户端可以拿到
+    ctx.body = ctx.request.body;
+  }
+```
+
+
+
+5、在postman点击send，可以在控制台获取到的post数据
+
+```js
+console.log(ctx.request.body);
+```
+
+![image-20210917231911400](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210917231911400.png)
+
+**主要步骤解释：**
+
+- 获取数据
+- 操作数据库
+- 返回结果
