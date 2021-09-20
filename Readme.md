@@ -619,7 +619,7 @@ password: {
 
   ![image-20210920131151486](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210920131151486.png)
 
-### 2.2、TIMEsTAMPS时间戳
+### 2.2、TIMESTAMPS时间戳
 
 在使用模型创建一个数据表后，mysql会主动创建两个时间戳字段：
 
