@@ -344,3 +344,329 @@ console.log(ctx.request.body);
 - 获取数据
 - 操作数据库
 - 返回结果
+
+## 2 注册中间件
+
+改写app/index.js
+
+```js
+// 请求体内容解析，这个中间件的导入和注册，必须在路由的内容之前
+const KoaBody = require('koa-body');
+
+// koa-body中间件的注册，必须在路由中间件之前
+app.use(KoaBody());
+```
+
+
+
+![image-20210919005917143](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210919005917143.png)
+
+## 3 解析请求数据
+
+改写user.controller.js：拿数据，操作数据库，返回结果
+
+```js
+// 导入数据库操作，因为这里的数据库操作是异步的，所以拿到return回来的结果是一个promise，所以要使用这个方法时，要用await
+const { createUser } = require('../service/user.service');
+class userController {
+  async register(ctx, next) {
+    // 1、获取数据
+    // 控制台看一下请求体
+    // console.log(ctx.request.body); // 使用post方法时，在postman上配置request内容，可以在控制台打印出来
+    // 如果客户端也要查看请求体的内容，就赋值给ctx.body，客户端可以拿到
+    // 用解构赋值，将post请求体中的json格式内容，赋值给对应的变量
+    const { user_name, password } = ctx.request.body;
+    // 2、操作数据库
+    const res = await createUser(user_name, password);
+    console.log(res);
+    ctx.body = ctx.request.body;
+  }
+  async login(ctx, next) {
+    ctx.body = '登录成功';
+  }
+}
+
+// 导出
+// 不直接导出这个类，而是导出这个类实例化出的对象
+// 导出给user.route.js使用
+module.exports = new userController();
+
+```
+
+## 4 拆分service层
+
+service层主要是做数据库的处理
+
+创建 `src/service/user.service.js`
+
+```js
+// 用于操作数据库的层级，从路由层单独抽离出来，解耦
+class UserService {
+  async createUser(user_name, password) {
+    // todo:写入数据库
+    return '写入数据库,成功';
+  }
+}
+
+// 导出数据库操作，主要是路由层使用，所以要在路由controller中导入
+module.exports = new UserService();
+
+```
+
+
+
+# 七、数据库操作
+
+sequelize ORM数据库工具
+
+ORM ： 对象关系映射，object relational mapping
+
+- 数据表映射(对应)一个类
+- 数据表中的数据行(记录)对应一个对象；（由数据表的类实例化出来的一个对象）
+- 数据表的字段对应对象的属性 
+- 对数据表的操作对应对象的方法；（被映射成这个类实例化出来的对象中的一个方法）
+
+
+
+## 1 安装
+
+安装对应插件:sequelize
+
+`npm i sequelize`
+
+还需要安装对应的数据库驱动:mysql2
+
+`npm i mysql2 `
+
+
+
+## 2 连接到数据库
+
+创建db/seq.js：用于插件操作数据库
+![image-20210919181412593](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210919181412593.png)
+
+导入sequelize
+
+```js
+const { Sequelize } = require('sequelize')
+```
+
+实例化一个sequelize对象
+
+ ```JS
+ // 数据库连接参数配置，参数：db数据库名，username用户名，password密码，{host主机名，dialect数据库类型}
+ const seq = new Sequelize(MYSQL_DB, MYSQL_USER, MYSQL_PWD, {
+   host: MYSQL_HOST,
+   dialect: 'mysql',
+ });
+ ```
+
+连接数据库
+
+使用的是sequelize包的`.authenticate()`方法
+
+返回的是一个Promise，所以可以`await`或者`.then/.catch`
+
+```js
+// 连接数据库
+seq
+  .authenticate()
+  .then(() => {
+    console.log('数库连接成功！');
+  })
+  .catch(err => {
+    console.log('数据库连接失败', err);
+  });
+```
+
+## 3 参数统一配置
+
+之前定义了.env来存储参数
+
+```js
+MYSQL_HOST = localhost
+MYSQL_PORT = 3306
+MYSQL_USER = root
+MYSQL_PWD = 123456
+MYSQL_DB = db_test
+```
+
+.env的环境参数会被导出到config.default.js中
+
+在seq.js中导入config.default.js
+
+```js
+// 导入配置信息
+const {
+  MYSQL_HOST,
+  MYSQL_PORT,
+  MYSQL_USER,
+  MYSQL_PWD,
+  MYSQL_DB,
+} = require('../config/config.default');
+
+// 导入sequelize
+const Sequelize = require('sequelize');
+// 数据库连接参数配置，参数：db数据库名，username用户名，password密码，{host主机名，dialect数据库类型}
+const seq = new Sequelize(MYSQL_DB, MYSQL_USER, MYSQL_PWD, {
+  host: MYSQL_HOST,
+  dialect: 'mysql',
+});
+```
+
+
+
+# 八、创建对象模型
+
+- sequelize将数据库中的数据表，抽象成一个对象模型，该对象模型的名称：人为手动设置=表的表名/默认使用表名的复数(inflection库)/人为手动设置指定名；模型的各个属性column(列名)：对应表的字段；模型的方法：对应对某字段的处理方式
+- 首先：model是一个抽象的类，是数据库的表的一种对象映射。创建模型时，有两种方法可以选择：
+  - 1、sequelize(实例).define()
+  - 2、Model(类).init()
+- 创建方法的区别：
+  - 1、从sequelize实例上直接调用define，那么这个model是与sequelize连接，从实例上新初始化一个Model类的实例
+  - 2、从独立的Model类中初始化一个实例，在实例化之前，需要继承Model，那么这个实例也是独立的，需要将其与sequelize实例相连接
+  - 3、其实内部：调用的是Model.init()方法
+- sequelize 会自动维护一个id字段，作为主键，并且自增
+
+## 1 创建对象模型
+
+使用.define()方法
+
+```js
+// 导入sequelize和其中创建模型的方法
+const { DataTypes } = require('sequelize');
+
+// 导入sequelize实例化对象，即：seq文件下创建的对象
+const seq = require('../db/seq');
+
+const User = seq.define(
+  // model名称
+  'User',
+  // 对应的数据表的列名
+  {
+    // 列名
+    firstName: {
+      // 列的属性
+      // 类型
+      type: DataTypes.STRING,
+    },
+    lastName: {
+      type: DataTypes.STRING,
+    },
+  },
+  // 其他参数
+  {}
+);
+```
+
+使用Model.init()
+
+```js
+// 导入sequelize和其中创建模型的方法
+const { DataTypes } = require('sequelize');
+
+// 导入sequelize实例化对象，即：seq文件下创建的对象
+const seq = require('../db/seq');
+
+class User extends Model {}
+User.init(
+  // 对应的数据表的列名
+  {
+    firstName: {
+      type: DataTypes.STRING,
+    },
+    lastName: {
+      type: DataTypes.STRING,
+    },
+  },
+  // 其他参数：必填：连接的实例
+  { seq }
+);
+```
+
+### 1.1 补充表名推断
+
+sequelize的Model映射数据表时，会对数据表的表名做推断：
+
+- 默认：Model名称的复数（内部用的是inflection库）
+- 手动设置一个固定值：`tableName: '自定义名称'`
+- 手动强制 = Model名称：`freezeTableName: true`
+
+### 1.2 数据类型：必填
+
+sequelize内置了很多数据类型，要使用的话，需要导入`DataTypes`
+
+```js
+const { DataTypes } = require('sequelize');
+
+// 伪代码举例：
+password: {
+      type: DataTypes.STRING,
+    },
+```
+
+## 2 创建Model完毕，模型同步
+
+### 2.1、sync()同步
+
+在创建完毕Model后，需要执行一个sync()，同步数据表
+
+- `User.sync()`：如果表不存在，则创建；存在，则不执行任何操作
+
+- `User.sync({ force: true })` ：如果表不存在，则创建；如果存在这张表，将会强制删除这张表，再重新创建
+
+- `User.sync({ alter: true })`：将表的数据记录强制与Model的设置匹配
+
+  ![image-20210920131151486](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210920131151486.png)
+
+### 2.2、TIMEsTAMPS时间戳
+
+在使用模型创建一个数据表后，mysql会主动创建两个时间戳字段：
+
+- createAt 创建表的时间
+- updateAt 表修改更新的时间
+
+如果不需要这两个字段，需要在使用model建表时，添加额外的参数：`{ timestamps: false }`
+
+```js
+sequelize.define('User', {
+  // ... (属性)
+}, {
+  timestamps: false
+});
+```
+
+如果只需要其中一个字段
+
+```js
+class Foo extends Model {}
+Foo.init({ /* 属性 */ }, {
+  sequelize,
+
+  // 不要忘记启用时间戳！
+  timestamps: true,
+
+  // 不想要 createdAt
+  createdAt: false,
+
+  // 想要 updatedAt 但是希望名称叫做 updateTimestamp
+  updatedAt: 'updateTimestamp'
+});
+```
+
+## 3 导出模型
+
+在直接使用脚本同步完数据表后，可以将同步的设置关闭，因为重复地删除和生成表会造成资源损耗
+
+```js
+// 同步数据表，{ force: true }，数据表存在，则删除，重新创建
+// User.sync({ force: true });
+User.sync();
+```
+
+导出模型，将会在service层对数据库的表进行操作
+
+```js
+module.exports = User;
+```
+
