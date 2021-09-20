@@ -46,7 +46,7 @@ const User = seq.define('User', {
 
 // 同步数据表，{ force: true }，数据表存在，则删除，重新创建
 // User.sync({ force: true });
-User.sync();
+// User.sync();
 
 // 导出模型-User
 module.exports = User;

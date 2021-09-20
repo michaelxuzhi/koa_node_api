@@ -670,3 +670,236 @@ User.sync();
 module.exports = User;
 ```
 
+
+
+# 九 对象模型对数据表的操作
+
+## 1 插入数据
+
+### 1.1、 `Model.create({ key: value })` 
+
+- key是Model的一个属性名，对应数据表里的一个字段
+- value是即将要插入数据表的值，可以是传过来的，也可以是hardcode写死的，总之就是给数据表的字段插入一个value
+
+- 调用的是Model.build()构建未保存实例，并调用Model.save()来保存；create是一种简写形式
+
+### 1.2、指定(限制) 修改的项
+
+```js
+const user = await User.create({
+  username: 'alice123',
+  isAdmin: true
+}, 
+// 通过fields 来指定需要修改的项
+{ fields: ['username'] }
+);
+// 假设 isAdmin 的默认值为 false
+console.log(user.username); // 'alice123'
+console.log(user.isAdmin); // false
+```
+
+### 1.3、实际操作
+
+```js
+// 使用了ES6的简写形式，当key和value都一样时，只需写一个
+class UserService {
+  async createUser(user_name, password) {
+    // 对象模型插入数据
+    const res = await User.create({ user_name, password });
+    console.log(res)
+  }
+}
+```
+
+![image-20210920143726665](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210920143726665.png)
+
+![image-20210920143849521](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210920143849521.png)
+
+可以看到，插入数据到数据表后，返回的res中含有大量可过滤的信息，我们只需要dataValues这一项，这一项也正是对应到我们数据表中**插入的那一项**
+
+
+
+# 十、数据表操作成功，返回处理
+
+利用Model的create方法，可以成功将数据插入到数据表中，并且有详细的返回信息res；在controller中，我们只需使用到res.dataValues这一项。所以在service层，只需要将该项返回出去就好了
+
+```js
+// user.service.js中的部分代码
+
+class UserService {
+  async createUser(user_name, password) {
+    // 对象模型插入数据
+    const res = await User.create({ user_name, password });
+    // console.log('service层操作数据库的结果:\n', res);
+    // 将结果返回给controller层
+    // res是较为详细的信息，其实要用到的是res.dataValues
+    return res.dataValues;
+  }
+}
+```
+
+```js
+// user.controller.js中的部分代码，从service层获取到的res，是处理过后的dataValues
+
+async register(ctx, next) {
+    // 1、获取数据
+    // 控制台看一下请求体
+    // console.log(ctx.request.body); // 使用post方法时，在postman上配置request内容，可以在控制台打印出来
+    // 如果客户端也要查看请求体的内容，就赋值给ctx.body，客户端可以拿到
+    // 用解构赋值，将post请求体中的json格式内容，赋值给对应的变量
+    const { user_name, password } = ctx.request.body;
+    // 2、操作数据库
+    const res = await createUser(user_name, password);
+    console.log(res);
+    ctx.body = ctx.request.body;
+  }
+```
+
+## 1 ctx.body的处理
+
+ctx.body是作为响应数据返回出去的
+
+在之前的代码里，都是：`ctx.body = ctx.request.body` 
+
+这就意味着：成功返回出去的数据 = 请求时候的数据，这就没什么意义了，所以要正式处理一下返回出去的数据，从结构和内容上做规范
+
+## 2 需要的参数
+
+code:：0-成功，0
+
+message：备注信息，" "
+
+result：结果 { }
+
+```js
+ctx.body = {
+    code: 0,
+    message: "数据插入成功！",
+    result:{
+        id: res.id,
+        user_name: res.user_name, 
+    }
+}
+```
+
+![image-20210920221353834](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210920221353834.png)
+
+# 十一：小结
+
+发送请求 -> 交由路由处理 -> 路由中找到对应的控制器的方法 ->  控制器的方法里提取请求体的关键数据 -> 调用service，实现对数据库的操作 -> 返回操作后结果
+
+
+
+# 十二 错误处理
+
+## 1 错误类型 
+
+- validation Error
+
+验证器错误：该key可能是唯一性的，但是重复post，写入数据库时出现了已存在的key值，那么就会报错
+
+- xxxkey cannot be null
+
+请求时没有传递到该key，由于该key需要传递并且需要带值传递，如果不传，那么就会报错
+
+## 2 处理方式
+
+### 2.1 合法性
+
+在controller中，对request.body中的数据做合法性校验
+
+因为每次请求都要去到controller层，寻找对应的处理函数，那么就在对应的处理函数中，对请求体的参数做一次校验，再决定是否进行数据库操作
+
+```js
+	// 1、获取数据
+    // 控制台看一下请求体
+    // console.log(ctx.request.body); // 使用post方法时，在postman上配置request内容，可以在控制台打印出来
+    // 如果客户端也要查看请求体的内容，就赋值给ctx.body，客户端可以拿到
+    // 用解构赋值，将post请求体中的json格式内容，赋值给对应的变量
+    const { user_name, password } = ctx.request.body;
+    // 补充：对传入的请求体内参数做校验
+    // 合法性
+    if (!user_name || !password) {
+      console.error('用户名或密码为空', ctx.request.body);
+      ctx.status = 400; // bad request
+      ctx.body = {
+        code: '10001',
+        message: '用户名或密码为空',
+        result: '',
+      };
+      // 参数不合法时，中断执行
+      return;
+    }
+```
+
+- 测试：
+
+postman：代码修改：code值为string
+
+![image-20210920233503592](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210920233503592.png)
+
+控制台：
+
+![image-20210920233532884](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210920233532884.png)
+
+### 2.2 合理性
+
+当数据库中已存在该用户名，则不允许再次创建
+
+可以通过查询来判断，如果能找到对应的用户名，则中断后续操作；如果找不到，则可以进行下一步操作
+
+- 由于涉及到对数据库的操作，那么就将此 **查询操作** 封装到service层，实现解耦与模块独立
+
+- 通过用户名去查找数据库
+
+service层封装的查询用户信息接口：因为可以通过多个参数作为条件去查找，所以将参数定义作对象，并列举出所有可以查找的条件，当其中任意一个参数被传进来，就可以使用条件拼接的方式，准确获取目标用户信息
+
+```js
+// user.service.js
+// 查询/获取用户信息
+  async getUserInfo({ id, user_name, password, is_admin }) {
+    // 使用短路运算，拼接查询条件
+    // 数据库查询条件where是一个对象类型
+    const whereOpt = {};
+    id && Object.assign(whereOpt, { id });
+    user_name && Object.assign(whereOpt, { user_name });
+    password && Object.assign(whereOpt, { password });
+    is_admin && Object.assign(whereOpt, { is_admin });
+      
+    // findOne异步查询
+    // 参数：attributes:{}-需要查询的字段；where:{}-条件
+    User.findOne({
+      attributes: ['id', 'user_name', 'password', 'is_admin'],
+      where: whereOpt,
+    });
+    return res ? res.dataValues : null;
+  }
+}
+```
+
+回到controller层，在检查合理性阶段，调用service层的getUserInfo接口，返回的res有值，则说明用户存在；返回null，则说明用户不存在，可以进行注册操作
+
+```js
+	// 合理性
+    // service层的查询接口要求参数类型是对象，所以这里需要传递一个对象
+    if (getUserInfo({ user_name })) {
+      console.error('用户已经存在!');
+      ctx.status = 409; // conflict
+      ctx.body = {
+        code: '10002',
+        message: '用户已经存在',
+        result: '',
+      };
+      return;
+    }
+```
+
+- 测试
+
+  ![image-20210921005615024](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210921005615024.png)
+
+  ![image-20210921005659508](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210921005659508.png)
+
+### 2.3 http响应码对照
+
+https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Status/100
