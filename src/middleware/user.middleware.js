@@ -4,7 +4,11 @@
 const { getUserInfo } = require('../service/user.service');
 
 // 导入错误类型，避免在中间件里面特殊处理
-const { userFormatError, userAlreadyExisted } = require('../constant/err.type');
+const {
+  userFormatError,
+  userAlreadyExisted,
+  userRegisterError,
+} = require('../constant/err.type');
 
 // 参数验证器-合法性
 const userValidator = async (ctx, next) => {
@@ -17,10 +21,12 @@ const userValidator = async (ctx, next) => {
     // console.error('用户名或密码为空-来自中间件层log记录', ctx.request.body);
     // 将错误信息提交到app中，由app来同一处理
     ctx.app.emit('error', userFormatError, ctx);
+    console.log('userValidator-不合法----testing');
     // 参数不合法时，中断执行
     return;
   }
   // 合法时，交由下一个中间件处理
+  console.log('userValidator-合法----testing');
   await next();
 };
 
@@ -28,12 +34,22 @@ const userValidator = async (ctx, next) => {
 const verifyUser = async (ctx, next) => {
   const { user_name } = ctx.request.body;
   // service层的查询接口要求参数类型是对象，所以这里需要传递一个对象
-  if (getUserInfo({ user_name })) {
-    // console.error('用户已经存在-来自中间件层log记录', ctx.request.body);
-    // 将错误信息提交到app中，由app来同一处理
-    ctx.app.emit('error', userAlreadyExisted, ctx);
+  // 补充容错
+  try {
+    const res = await getUserInfo({ user_name });
+    if (res) {
+      // 打印错误信息，记录在服务器中
+      console.error('用户已经存在-来自中间件层log记录', user_name);
+      // 将错误信息提交到app中，由app来同一处理
+      ctx.app.emit('error', userAlreadyExisted, ctx);
+      return;
+    }
+  } catch (error) {
+    console.error('获取用户信息错误！', error);
+    ctx.app.emit('error', userRegisterError, ctx);
     return;
   }
+
   await next();
 };
 

@@ -990,7 +990,7 @@ post 方式的参数解释：
 const verifyUser = async (ctx, next) => {
   const { user_name } = ctx.request.body;
   // service层的查询接口要求参数类型是对象，所以这里需要传递一个对象
-  if (getUserInfo({ user_name })) {
+  if (await getUserInfo({ user_name })) {
     console.error('用户已经存在-来自中间件层log记录', ctx.request.body);
     ctx.status = 409; // conflict
     ctx.body = {
@@ -1077,7 +1077,7 @@ module.exports = (err, ctx) => {
       status = 500;
       break;
   }
-  ctx.status == status;
+  ctx.status = status;
   ctx.body = err;
 };
 ```
@@ -1092,3 +1092,72 @@ const errhandler = require('./errhandler');
 // 因为errhandler导出的是一个匿名函数，所以这里直接使用即可
 app.on('error', errhandler);
 ```
+
+## 5 controller中写数据库的容错补充
+
+在register对数据库进行插入数据操作时，也有可能会出现异常情况，那么需要补充一个对错误的捕获
+
+用`try`来包：写数据库操作，`catch`来捕获异常情况
+
+- 新增错误类型
+
+  ```js
+  // 用户注册错误，用于controller中的容错
+    userRegisterError: {
+      code: '10003',
+      message: '用户注册错误',
+      result: '',
+    },
+  ```
+
+- 在controller中使用
+
+  ```js
+  // controller.js
+  // 导入错误情况
+  const { userRegisterError } = require('../constant/err.type');
+  
+  ------------------------------------------------------------
+  
+  	// 写入数据库的容错，用try/catch来包含
+      try {
+        const res = await createUser(user_name, password);
+        // 3、处理返回出去的数据
+        ctx.body = {
+          code: 0,
+          message: '数据插入成功!',
+          result: { id: res.id, user_name: res.user_name },
+        };
+      } catch (error) {
+        // 打印错误
+        console.log(error);
+        // emit出去，由app做统一错误处理
+        ctx.app.emit('error', userRegisterError, ctx);
+        return;
+      }
+  ```
+
+## 6 middleware中对查询数据库的容错补充
+
+在对数据内容进行查询时，也有可能会出现异常情况，同样地，使用`try/catch`来捕获异常
+
+- 在middleware层：
+
+  ```js
+    try {
+      const res = await getUserInfo({ user_name });
+      if (res) {
+        // 打印错误信息，记录在服务器中
+        console.error('用户已经存在-来自中间件层log记录', user_name);
+        // 将错误信息提交到app中，由app来同一处理
+        ctx.app.emit('error', userAlreadyExisted, ctx);
+        return;
+      }
+    } catch (error) {
+      console.error('获取用户信息错误！', error);
+      ctx.app.emit('error', userRegisterError, ctx);
+      return;
+    }
+  ```
+
+  
