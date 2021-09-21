@@ -1,5 +1,8 @@
 // 导入路由
 const Router = require('koa-router');
+// 导入验证器，在controller之前先把关
+const { userValidator, verifyUser } = require('../middleware/user.middleware');
+
 // 新版：通过controller下的对应处理文件来触发回调
 // require的是controller中实例化出来的一个对象，我们要使用的是对象中的一个方法，所以进行解构
 const { register, login } = require('../controller/user.controller');
@@ -15,7 +18,7 @@ const userRouter = new Router({ prefix: '/users' });
 // });
 
 // 根据接口文档，使用正确的http方式
-userRouter.post('/register', register);
+userRouter.post('/register', userValidator, verifyUser, register);
 userRouter.post('/login', login);
 
 // 导出userRouter
