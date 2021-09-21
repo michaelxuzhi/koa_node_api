@@ -63,14 +63,14 @@ app.listen(3000, () => {
   // 在控制台使用npm run dev 就起服务了
   ```
 
-  ![image-20210905153304973](koa_node_typora_imgs/image-20210905153304973.png)
+  ![image-20210905153304973](Readme.assets/image-20210905153304973.png)
 
 - **工具优化更新**：
   
   - 由于nodemon只是开发时需要用到，所以不需要把它放到dependencies中
   - 卸载依赖：`npn un xxx`
   - 在安装的时候，使用`npm i xxx -D `将依赖安装到dev开发环境中
-  - ![image-20210913000221283](koa_node_typora_imgs/image-20210913000221283.png)
+  - ![image-20210913000221283](Readme.assets/image-20210913000221283.png)
 
 ## 2 读取配置文件
 
@@ -290,20 +290,20 @@ userRouter.post('/register', register);
 
 `用户注册接口`、`用户登录接口`
 
-![image-20210912230441351](koa_node_typora_imgs/image-20210912230441351.png)
+![image-20210912230441351](Readme.assets/image-20210912230441351.png)
 
 4、创建环境
 
 开发环境：dev_env
-![image-20210912230536495](koa_node_typora_imgs/image-20210912230536495.png)
+![image-20210912230536495](Readme.assets/image-20210912230536495.png)
 
 5、在接口文件中选择正确的环境，填写对应的URL
 
-![image-20210912230700595](koa_node_typora_imgs/image-20210912230700595.png)
+![image-20210912230700595](Readme.assets/image-20210912230700595.png)
 
 6、接口测试：点击send，看返回的结果
 
-![image-20210912230754875](koa_node_typora_imgs/image-20210912230754875.png)
+![image-20210912230754875](Readme.assets/image-20210912230754875.png)
 
 
 
@@ -316,7 +316,7 @@ userRouter.post('/register', register);
 2、注意事项：解析body，必须要在router之前，否则不生效
 
 3、在postman配置post的数据
-![image-20210917231932219](koa_node_typora_imgs/image-20210917231932219.png)
+![image-20210917231932219](Readme.assets/image-20210917231932219.png)
 
 4、去到路由处理文件controller.js中，在对应的接口下设置查看post的数据
 
@@ -337,7 +337,7 @@ async register(ctx, next) {
 console.log(ctx.request.body);
 ```
 
-![image-20210917231911400](koa_node_typora_imgs/image-20210917231911400.png)
+![image-20210917231911400](Readme.assets/image-20210917231911400.png)
 
 **主要步骤解释：**
 
@@ -359,7 +359,7 @@ app.use(KoaBody());
 
 
 
-![image-20210919005917143](koa_node_typora_imgs/image-20210919005917143.png)
+![image-20210919005917143](Readme.assets/image-20210919005917143.png)
 
 ## 3 解析请求数据
 
@@ -443,7 +443,7 @@ ORM ： 对象关系映射，object relational mapping
 ## 2 连接到数据库
 
 创建db/seq.js：用于插件操作数据库
-![image-20210919181412593](koa_node_typora_imgs/image-20210919181412593.png)
+![image-20210919181412593](Readme.assets/image-20210919181412593.png)
 
 导入sequelize
 
@@ -617,7 +617,7 @@ password: {
 
 - `User.sync({ alter: true })`：将表的数据记录强制与Model的设置匹配
 
-  ![image-20210920131151486](koa_node_typora_imgs/image-20210920131151486.png)
+  ![image-20210920131151486](Readme.assets/image-20210920131151486.png)
 
 ### 2.2、TIMESTAMPS时间戳
 
@@ -711,9 +711,9 @@ class UserService {
 }
 ```
 
-![image-20210920143726665](koa_node_typora_imgs/image-20210920143726665.png)
+![image-20210920143726665](Readme.assets/image-20210920143726665.png)
 
-![image-20210920143849521](koa_node_typora_imgs/image-20210920143849521.png)
+![image-20210920143849521](Readme.assets/image-20210920143849521.png)
 
 可以看到，插入数据到数据表后，返回的res中含有大量可过滤的信息，我们只需要dataValues这一项，这一项也正是对应到我们数据表中**插入的那一项**
 
@@ -782,7 +782,7 @@ ctx.body = {
 }
 ```
 
-![image-20210920221353834](koa_node_typora_imgs/image-20210920221353834.png)
+![image-20210920221353834](Readme.assets/image-20210920221353834.png)
 
 # 十一：小结
 
@@ -836,11 +836,11 @@ ctx.body = {
 
 postman：代码修改：code值为string
 
-![image-20210920233503592](koa_node_typora_imgs/image-20210920233503592.png)
+![image-20210920233503592](Readme.assets/image-20210920233503592.png)
 
 控制台：
 
-![image-20210920233532884](koa_node_typora_imgs/image-20210920233532884.png)
+![image-20210920233532884](Readme.assets/image-20210920233532884.png)
 
 ### 2.2 合理性
 
@@ -896,7 +896,7 @@ service层封装的查询用户信息接口：因为可以通过多个参数作�
 
 - 测试
 
-  ![image-20210921005613033](koa_node_typora_imgs/image-20210921005613033.png)![image-20210921005659508](koa_node_typora_imgs/image-20210921005659508.png)
+  ![image-20210921005613033](Readme.assets/image-20210921005613033.png)![image-20210921005659508](Readme.assets/image-20210921005659508.png)
 
 
 ### 2.3 http响应码对照
@@ -977,7 +977,7 @@ post 方式的参数解释：
 - 中间件之间的顺序调用，由上一个中间件的 **next()** 来决定
 
   - 比如：此时传进的参数需要经过验证器中间件验证成功后，再交由controller中的register处理，那么在验证器中间件中，判断参数合法，则调用：**next()**
-    ![image-20210921121650422](koa_node_typora_imgs/image-20210921121650422.png)
+    ![image-20210921121650422](Readme.assets/image-20210921121650422.png)
 
 ## 2 用户验证器
 
@@ -1092,9 +1092,3 @@ const errhandler = require('./errhandler');
 // 因为errhandler导出的是一个匿名函数，所以这里直接使用即可
 app.on('error', errhandler);
 ```
-
-
-
-
-
- ![image-20210921161323678](Readme.assets/image-20210921161323678.png)
