@@ -1,4 +1,7 @@
-// 将错误处理抽离出来，作为一个统一的验证处理中间件，需要时调用，避免在主逻辑中写过多重复冗余的错误处理和验证的代码
+// 将参数验证等功能，拆分成单一职责的中间件，每个流程由一个或多个中间件负责，但不堆积在主逻辑当中
+
+// 导入bcryptjs，加密中间件需求
+const bcrypt = require('bcryptjs');
 
 // 导入Model，对数据库有查询需求
 const { getUserInfo } = require('../service/user.service');
@@ -49,7 +52,20 @@ const verifyUser = async (ctx, next) => {
     ctx.app.emit('error', userRegisterError, ctx);
     return;
   }
+  await next();
+};
 
+// 加密中间件
+const cryptPassword = async (ctx, next) => {
+  // 获取请求体中的原密码
+  const { password } = ctx.request.body;
+  // 从加密库中获取salt-盐
+  const salt = bcrypt.genSaltSync(10);
+  // hash加密，得到的是密文
+  const hash = bcrypt.hashSync(password, salt);
+  // 用密文代替password返回出去
+  ctx.request.body.password = hash;
+  // 处理好password。交由下一个中间件处理
   await next();
 };
 
@@ -57,4 +73,5 @@ const verifyUser = async (ctx, next) => {
 module.exports = {
   userValidator,
   verifyUser,
+  cryptPassword,
 };

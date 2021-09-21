@@ -1160,4 +1160,67 @@ app.on('error', errhandler);
     }
   ```
 
-  
+
+
+
+# 十五 password加密
+
+在将密码保存到数据库之前，要对密码进行加密处理
+
+加盐加密：原密码+随机字符，进行算法加密；所谓的盐，就是指与原密码无关的字符/用于改变原密码
+
+## 1 使用bcryptjs库
+
+安装：`npm i bcryptjs`
+
+## 2 单一职责原则
+
+ 严格执行一个中间件一个功能的原则，不将功能耦合到多个模块，这是为了如果后续更换技术，那么只需要在对应的中间件修改即可
+
+加密中间件实现：
+
+```js
+// middleware.js
+// 导入bcryptjs库
+const bcrypt = require('bcryptjs');
+
+// 加密中间件
+// 加密中间件
+const cryptPassword = async (ctx, next) => {
+  // 获取请求体中的原密码
+  const { password } = ctx.request.body;
+  // 从加密库中获取salt-盐
+  const salt = bcrypt.genSaltSync(10);
+  // hash加密，得到的是密文
+  const hash = bcrypt.hashSync(password, salt);
+  // 用密文代替password返回出去
+  ctx.request.body.password = hash;
+  // 处理好password。交由下一个中间件处理
+  await next();
+};
+
+// 导出
+module.exports = { cryptPassword }
+```
+
+router层的导入与使用：
+
+```js
+// route
+// 导入
+const {
+  userValidator,
+  verifyUser,
+  cryptPassword,
+} = require('../middleware/user.middleware');
+
+// 使用
+userRouter.post('/register', userValidator, verifyUser, cryptPassword, register);
+```
+
+## 3 测试
+
+![image-20210921230549184](Readme.assets/image-20210921230549184.png)
+
+![image-20210921230608258](Readme.assets/image-20210921230608258.png)
+

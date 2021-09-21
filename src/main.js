@@ -1,4 +1,3 @@
-// 导入
 // 导入index中实例化的Koa
 const app = require('./app/index');
 // 导入config文件
