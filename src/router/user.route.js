@@ -5,6 +5,7 @@ const {
   userValidator,
   verifyUser,
   cryptPassword,
+  verifyLogin,
 } = require('../middleware/user.middleware');
 
 // 新版：通过controller下的对应处理文件来触发回调
@@ -23,7 +24,7 @@ const userRouter = new Router({ prefix: '/users' });
 
 // 根据接口文档，使用正确的http方式
 userRouter.post('/register', userValidator, verifyUser, cryptPassword, register);
-userRouter.post('/login', login);
+userRouter.post('/login', userValidator, verifyLogin, login);
 
 // 导出userRouter
 module.exports = userRouter;

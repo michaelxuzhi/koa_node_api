@@ -11,6 +11,9 @@ const {
   userFormatError,
   userAlreadyExisted,
   userRegisterError,
+  userDoesNotExist,
+  userLoginError,
+  invalidPasword,
 } = require('../constant/err.type');
 
 // 参数验证器-合法性
@@ -69,9 +72,38 @@ const cryptPassword = async (ctx, next) => {
   await next();
 };
 
+const verifyLogin = async (ctx, next) => {
+  const { user_name, password } = ctx.request.body;
+  try {
+    // 1、判断用户是否存在
+    // 通过用户名去查询数据库（不存在：报错）
+    const res = await getUserInfo({ user_name });
+    // 用户不存在
+    if (!res) {
+      console.error('用户名不存在数据库中', user_name);
+      ctx.app.emit('error', userDoesNotExist, ctx);
+      return;
+    }
+    // 2、密码是否匹配（不匹配，报错）
+    // 解析出数据库中用户信息的加密密码
+    // 密码不匹配
+    if (!bcrypt.compareSync(password, res.password)) {
+      ctx.app.emit('error', invalidPasword, ctx);
+      return;
+    }
+  } catch (error) {
+    console.error(error);
+    ctx.app.emit('error', userLoginError, ctx);
+    return;
+  }
+  // 密码匹配，交由下一个中间件处理
+  await next();
+};
+
 // 导出
 module.exports = {
   userValidator,
   verifyUser,
   cryptPassword,
+  verifyLogin,
 };

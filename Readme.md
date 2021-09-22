@@ -1224,3 +1224,142 @@ userRouter.post('/register', userValidator, verifyUser, cryptPassword, register)
 
 ![image-20210921230608258](Readme.assets/image-20210921230608258.png)
 
+# 十六 登录
+
+登录流程：
+
+1、post访问到指定路由：`/login`
+
+2、触发一系列中间件
+
+- 校验参数是否合法
+- 校验用户是否存在
+- 校验密码是否匹配
+- 成功登录
+
+3、编写中间件
+
+- 校验参数合法：`userValidator`（复用注册模块）
+
+- 校验用户存在：`verifyLogin`
+
+  ```js
+  const verifyLogin = async (ctx, next) => {
+    const { user_name } = ctx.request.body;
+    try {
+      // 1、判断用户是否存在
+      // 通过用户名去查询数据库（不存在：报错）
+      const res = await getUserInfo({ user_name });
+      // 用户不存在
+      if (!res) {
+        console.error('用户名不存在数据库中', user_name);
+        ctx.app.emit('error', userDoesNotExist, ctx);
+      }
+    } catch (error) {
+      console.error(error);
+      ctx.app.emit('error', userLoginError, ctx);
+    }
+    // 2、密码是否匹配（不匹配，报错）
+    await next();
+  };
+  ```
+
+  错误信息类型的补充：
+
+  ```js
+    // 用户不存在错误，用于verifyLogin中间件查询不到用户信息
+    userDoesNotExist: {
+      code: '10004',
+      message: '用户不存在数据库中',
+      result: '',
+    },
+    // 用户登录失败，用于verifyLogin中间件catch(error)
+    userLoginError: {
+      code: '10005',
+      message: '用户登录失败',
+      result: '',
+    },
+  ```
+
+  在router层，访问到`/login`接口的回调处理中，添加这个中间件
+
+  ```js
+  // router层
+  // 导入
+  const {
+    userValidator,
+    verifyUser,
+    cryptPassword,
+    verifyLogin,
+  } = require('../middleware/user.middleware');
+  // 添加使用
+  userRouter.post('/login', userValidator, verifyLogin, login);
+  ```
+
+  -------------------------------------------------------
+
+  在verifyLogin中补充：密码匹配步骤
+
+  - 使用的是加密库：bcryptjs 的解密（同步解密）
+    ![image-20210922230237172](Readme.assets/image-20210922230237172.png)
+
+  ```js
+  const verifyLogin = async (ctx, next) => {
+    const { user_name, password } = ctx.request.body;
+    try {
+      // 1、判断用户是否存在
+      // 通过用户名去查询数据库（不存在：报错）
+      const res = await getUserInfo({ user_name });
+      // 用户不存在
+      if (!res) {
+        console.error('用户名不存在数据库中', user_name);
+        ctx.app.emit('error', userDoesNotExist, ctx);
+        return;
+      }
+      // 2、密码是否匹配（不匹配，报错）
+      // 解析出数据库中用户信息的加密密码
+      // 密码不匹配
+      if (!bcrypt.compareSync(password, res.password)) {
+        ctx.app.emit('error', invalidPasword, ctx);
+        return;
+      }
+    } catch (error) {
+      console.error(error);
+      ctx.app.emit('error', userLoginError, ctx);
+      return;
+    }
+    // 密码匹配，交由下一个中间件处理
+    await next();
+  };
+  ```
+
+  补充密码不匹配错误信息：
+
+  ```js
+    // 用户密码不匹配，用于verifyLogin中间件的解密
+    invalidPasword: {
+      code: '10006',
+      message: '密码不匹配',
+      result: '',
+    },
+  ```
+
+4、 测试
+
+- 正常情况，密码匹配登录成功
+  ![image-20210922231707877](Readme.assets/image-20210922231707877.png)
+
+- 错误情况一：用户不存在
+  ![image-20210922233641024](Readme.assets/image-20210922233641024.png)
+
+- 错误情况二：用户密码不正确
+  ![image-20210922233726821](Readme.assets/image-20210922233726821.png)
+
+- 参数错误的测试之前做过了，这里就不补充了
+
+---
+
+## 一个搞笑的bug：errhandler.js有几率在修改保存后，没能成功触发，需要多保存几次/重新run dev
+
+---
+
