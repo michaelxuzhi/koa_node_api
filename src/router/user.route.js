@@ -1,3 +1,4 @@
+// 用户模块路由文件
 // 导入路由
 const Router = require('koa-router');
 // 导入验证器等其他中间件，在controller之前先把关

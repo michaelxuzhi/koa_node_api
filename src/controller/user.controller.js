@@ -6,7 +6,7 @@ const { JWT_SECRET } = require('../config/config.default');
 const { createUser, getUserInfo, updateById } = require('../service/user.service');
 // 导入错误情况
 const { userRegisterError } = require('../constant/err.type');
-class userController {
+class UserController {
   async register(ctx, next) {
     // 1、获取数据
     // 控制台看一下请求体
@@ -87,4 +87,4 @@ class userController {
 // 导出
 // 不直接导出这个类，而是导出这个类实例化出的对象
 // 导出给user.route.js使用
-module.exports = new userController();
+module.exports = new UserController();

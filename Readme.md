@@ -1778,7 +1778,7 @@ postman支持：发送前脚本（pre-request script），响应后脚本（Test
     is_admin && Object.assign(newUser, { is_admin });
 
     // sequelize的简单update查询方法，数据库处理用异步
-    // update会返回一个数组，表示更新的数量，如：[1]表示更新了一条记录
+    // update会返回一个数组，表示更新的数量，如：[1] 表示更新了一条记录
     const res = await User.update(newUser, { where: whereOpt });
     return res[0] ? true : false;
   }
@@ -1805,4 +1805,87 @@ postman支持：发送前脚本（pre-request script），响应后脚本（Test
       };
     }
 ```
+
+
+
+# 二十一、商品模块
+
+对于一个新的模块，就使用新的路由去处理，用户模块用的是`/users/`，那么商品模块就新定义一个`/goods/`
+
+## 1 创建一个新的路由文件，专门处理商品模块
+
+![image-20210925232128802](Readme.assets/image-20210925232128802.png)
+
+- 导出商品模块路由，给index注册使用
+
+  ```js
+  // 导出
+  module.exports = goodsRouter;
+  ```
+
+- 需要去到`index`文件下注册商品路由
+
+  ```js
+  // 导入
+  const goodsRouter = require('../router/goods.route'); // 商品模块
+  // 注册路由中间件
+  app.use(goodsRouter.routes()); // 商品模块
+  ```
+
+### 1.1 自动化添加路由脚本
+
+显然，每新创建一个路由文件，就要到`app/index`下导入并注册，会有点繁琐，那么就写一个自动化脚本，自动读取路由文件，形成一个路由列表，并提供给`app/index`进行注册
+
+- 创建一个`router/index.js`文件
+
+  ```js
+  // 自动读取router文件夹下的路由文件，并完成导入，交由app/index注册
+  
+  // 导入node文件系统工具
+  const fs = require('fs');
+  
+  // 导入koa-router，并实例化
+  const Router = require('koa-router');
+  const router = new Router();
+  
+  // 读取当前目录文件-同步的方式
+  fs.readdirSync(__dirname).forEach(fileName => {
+    //   console.log(fileName);
+    // 排除掉roulist文件
+    if (fileName !== 'routeslist.js') {
+      // 加载各个路由文件
+      let r = require('./' + fileName);
+      // 使用koa-router完成初始化
+      // 这里只是完成初始化，还需要将这些初始化文件挂载/注册到app/index下
+      router.use(r.routes());
+    }
+  });
+  
+  module.exports = router;
+  ```
+
+- 遍历结果
+
+![image-20210925235755368](Readme.assets/image-20210925235755368.png)
+
+- app/index下的导入与注册
+
+  ```js
+  // 新版-路由导入
+  const router = require('../router/routeslist');
+  
+  // 新版-路由注册
+  app.use(router.routes());
+  ```
+
+- 脚本工作原理的解释
+
+  - 原本：由单个路由文件导出，由app/index导入，在index中完成koa-router的初始化，再进行挂载/注册
+  - 现在：在routeslist文件遍历当前router文件目录，主动进行导入和初始化，再将初始化的实例，交由app/index进行注册
+
+## 2 创建一个新的控制器文件，专门处理商品模块
+
+![image-20210925232950378](Readme.assets/image-20210925232950378.png)
+
+- 在goodsController中，有处理上传商品图片的upload方法，本来upload是作为一个通用的中间件，用于各类文件的上传，不只是图片，但是此项目没有过于复杂的需求，upload只是用于此，那么就先这样写
 
