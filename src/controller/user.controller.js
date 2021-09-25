@@ -1,5 +1,9 @@
+// 导入jsonwebtoken包，用于登录成功后颁发令牌
+const jwt = require('jsonwebtoken');
+// 导入密钥，用于token令牌的配置
+const { JWT_SECRET } = require('../config/config.default');
 // 导入数据库操作，因为这里的数据库操作是异步的，所以拿到return回来的结果是一个promise，所以要使用这个方法时，要用await
-const { createUser } = require('../service/user.service');
+const { createUser, getUserInfo, updateById } = require('../service/user.service');
 // 导入错误情况
 const { userRegisterError } = require('../constant/err.type');
 class userController {
@@ -34,7 +38,49 @@ class userController {
 
   async login(ctx, next) {
     const { user_name } = ctx.request.body;
-    ctx.body = `欢迎回来，${user_name}`;
+    // ctx.body = `欢迎回来，${user_name}`;
+    // 1、获取用户信息（在token的payload中。需要记录id，user_name，is_admin）
+    try {
+      const { password, ...resUserInfo } = await getUserInfo({ user_name });
+      ctx.body = {
+        code: '0 ',
+        message: '用户登录成功！',
+        result: {
+          // token配置参数：{载荷}+密钥+{超时时间}
+          token: jwt.sign(resUserInfo, JWT_SECRET, { expiresIn: '1d' }),
+        },
+      };
+    } catch (error) {
+      console.log('用户登录失败！', error);
+    }
+  }
+  // 修改用户信息
+  async changePassword(ctx, next) {
+    // auth中已经解析出payload，将用户的信息存储到ctx.state.user当中了
+    // 那么可以借助用户信息，查询数据库，并操作数据库，实际修改用户密码
+    // 用户的新密码也已经由加密中间件加密
+    // 1、获取数据
+    const id = ctx.state.user.id;
+    const password = ctx.request.body.password;
+    // console.log(id, password);
+    // 2、操作数据库
+    // 从service层能拿到修改的结果：true/false
+    if (await updateById({ id, password })) {
+      ctx.body = {
+        code: '0',
+        message: '密码修改成功！',
+        result: '',
+      };
+    } else {
+      ctx.body = {
+        code: '10007',
+        message: '修改密码失败！',
+        result: '',
+      };
+    }
+    // 3、返回结果
+    // ctx.body = '成功修改密码！';
+    await next();
   }
 }
 

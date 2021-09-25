@@ -1,4 +1,6 @@
 // 常见的错误类型及其返回出去的log内容
+// 100开头：用户的登录注册模块
+// 101开头：toekn验证模块
 module.exports = {
   userFormatError: {
     code: '10001',
@@ -32,6 +34,23 @@ module.exports = {
   invalidPasword: {
     code: '10006',
     message: '密码不匹配',
+    result: '',
+  },
+  // ---------------token错误部分----------------//
+  // token过期，用于token解析
+  tokenExpiredError: {
+    code: '10101',
+    message: 'token已过期',
+    result: '',
+  },
+  invalidToken: {
+    code: '10102',
+    message: 'token无效',
+    result: '',
+  },
+  tokenAnalyzeError: {
+    code: '10103',
+    message: 'token解析错误',
     result: '',
   },
 };

@@ -1298,53 +1298,53 @@ userRouter.post('/register', userValidator, verifyUser, cryptPassword, register)
 
   -------------------------------------------------------
 
-  在verifyLogin中补充：密码匹配步骤
+4 、在verifyLogin中补充：密码匹配步骤
 
-  - 使用的是加密库：bcryptjs 的解密（同步解密）
-    ![image-20210922230237172](Readme.assets/image-20210922230237172.png)
+- 使用的是加密库：bcryptjs 的解密（同步解密）
+  ![image-20210922230237172](Readme.assets/image-20210922230237172.png)
 
-  ```js
-  const verifyLogin = async (ctx, next) => {
-    const { user_name, password } = ctx.request.body;
-    try {
-      // 1、判断用户是否存在
-      // 通过用户名去查询数据库（不存在：报错）
-      const res = await getUserInfo({ user_name });
-      // 用户不存在
-      if (!res) {
-        console.error('用户名不存在数据库中', user_name);
-        ctx.app.emit('error', userDoesNotExist, ctx);
-        return;
-      }
-      // 2、密码是否匹配（不匹配，报错）
-      // 解析出数据库中用户信息的加密密码
-      // 密码不匹配
-      if (!bcrypt.compareSync(password, res.password)) {
-        ctx.app.emit('error', invalidPasword, ctx);
-        return;
-      }
-    } catch (error) {
-      console.error(error);
-      ctx.app.emit('error', userLoginError, ctx);
+```js
+const verifyLogin = async (ctx, next) => {
+  const { user_name, password } = ctx.request.body;
+  try {
+    // 1、判断用户是否存在
+    // 通过用户名去查询数据库（不存在：报错）
+    const res = await getUserInfo({ user_name });
+    // 用户不存在
+    if (!res) {
+      console.error('用户名不存在数据库中', user_name);
+      ctx.app.emit('error', userDoesNotExist, ctx);
       return;
     }
-    // 密码匹配，交由下一个中间件处理
-    await next();
-  };
-  ```
+    // 2、密码是否匹配（不匹配，报错）
+    // 解析出数据库中用户信息的加密密码
+    // 密码不匹配
+    if (!bcrypt.compareSync(password, res.password)) {
+      ctx.app.emit('error', invalidPasword, ctx);
+      return;
+    }
+  } catch (error) {
+    console.error(error);
+    ctx.app.emit('error', userLoginError, ctx);
+    return;
+  }
+  // 密码匹配，交由下一个中间件处理
+  await next();
+};
+```
 
-  补充密码不匹配错误信息：
+补充密码不匹配错误信息：
 
-  ```js
-    // 用户密码不匹配，用于verifyLogin中间件的解密
-    invalidPasword: {
-      code: '10006',
-      message: '密码不匹配',
-      result: '',
-    },
-  ```
+```js
+  // 用户密码不匹配，用于verifyLogin中间件的解密
+  invalidPasword: {
+    code: '10006',
+    message: '密码不匹配',
+    result: '',
+  },
+```
 
-4、 测试
+5、 测试
 
 - 正常情况，密码匹配登录成功
   ![image-20210922231707877](Readme.assets/image-20210922231707877.png)
@@ -1362,4 +1362,447 @@ userRouter.post('/register', userValidator, verifyUser, cryptPassword, register)
 ## 一个搞笑的bug：errhandler.js有几率在修改保存后，没能成功触发，需要多保存几次/重新run dev
 
 ---
+
+# 十七 用户的认证：token颁发
+
+主要是通过登录成功后，会给用户颁发一个令牌：token，用户在之后的每一次请求中携带这个令牌，服务端要对这个令牌的时效性和有效性进行校验
+
+由于前后端分离，这里使用的是：`jwt -json web token`
+
+![image-20210924235732807](Readme.assets/image-20210924235732807.png)
+
+头部 header：
+![image-20210924235818807](Readme.assets/image-20210924235818807.png)
+
+载荷 payload：
+
+![image-20210924235924421](Readme.assets/image-20210924235924421.png)
+
+签名 signature：
+![image-20210924235947086](Readme.assets/image-20210924235947086.png)
+
+## 1 安装token库
+
+`npm i jsonwebtoken`
+
+## 2 在controller中导入
+
+因为颁发token是在登录成功后，处理登录成功后的函数在controller中，其余的校验方式是中间件，在middleware中
+
+```js
+const jwt = require('jsonwebtoken')
+```
+
+---
+
+## 3 新解构赋值写法补充：
+
+从某一对象中剔除掉一部分属性，将剩下的属性值赋值给一个新的对象
+
+```js
+// 例如：user = { 'name':'xiaoming', 'sex':'man', 'age': 18 }
+// 需要将sex属性剔除，将name和age属性赋值给新的对象userInfo
+
+// 将需要剔除的属性单独赋值，再将其余属性解构赋值
+// 这里的sex必须和user中的属性名一致
+const { sex, ...userInfo } = user;
+
+// 这里需要注意的是：二次赋值时，单独赋值的属性名和要剔除的属性名要一致
+// 新赋值的对象名称可以任意
+
+// 这样userInfo就是除了sex属性之外，另一形式的user的存在了
+console.log(sex) // man 
+console.log(userInfo) // { name: 'xiaoming', age: 18 }
+
+// 同样地，对剔除多个属性的情况一样有效
+```
+
+---
+
+## 4 配置一个密钥
+
+到`.env` 下增加一个密钥项
+
+```js
+JWT_SECRET = abc
+```
+
+## 5 token配置参数
+
+- 载荷：常见一个对象类型
+- 密钥：常见一个字符串类型
+- （可选）超时时间：一个对象：`{expiresIn:1d}`=1天
+  - 超时时间格式：`https://github.com/vercel/ms`
+  - ![image-20210925011038814](Readme.assets/image-20210925011038814.png)
+
+```js
+	// 在login的登录成功回调处理中：
+	// 1、获取用户信息（在token的payload中。需要记录id，user_name，is_admin）
+    try {
+      const { password, ...resUserInfo } = await getUserInfo({ user_name });
+      ctx.body = {
+        code: '0 ',
+        message: '用户登录成功！',
+        result: {
+          // token配置参数：{载荷}+密钥+{超时时间}
+          token: jwt.sign(resUserInfo, JWT_SECRET, { expiresIn: '1d' }),
+        },
+      };
+    } catch (error) {
+      console.log('用户登录失败！', error);
+    }
+```
+
+
+
+## 6 测试颁发
+
+![image-20210925094828493](Readme.assets/image-20210925094828493.png)
+
+
+
+# 十八 用户认证：token验证
+
+因为token中融合了用户的主要信息resUserInfo和密钥和有效时长，那么就可以从中反向提取出这些信息，当用户携带token对某些路由进行访问请求时，就可以从提取出来的信息中主动鉴权
+
+**注意：请求的路由不要写错，代码中有配置了prefix需要自行脑洞补充**
+
+```js
+// prefix参数是默认拼接参数，即：prefix+处理函数中的路径，才是最终的路由
+const userRouter = new Router({ prefix: '/users' });
+```
+
+---
+
+## 1 http方式补充
+
+put：全量修改信息，将传递过来的信息全部替换
+
+patch：部分修改信息，只将传递过的信息做替换
+
+---
+
+## 2 模拟携带token
+
+复制一份token，在postman的Auth选项里，选择Bearer Token(送信者)，将token复制在这
+![image-20210925101656018](Readme.assets/image-20210925101656018.png)
+
+再点开Headers选项，就可以看到Authorization中已经配好了token
+**注意：header中的Authorization的值是以`Bearer 空格` 开头，获取Authorization需要将它的value进行字符串裁剪或筛选替换**
+
+![image-20210925101947423](Readme.assets/image-20210925101947423.png)
+
+## 3 回到路由，获取token
+
+![image-20210925102625183](Readme.assets/image-20210925102625183.png)
+
+```js
+// 修改密码接口
+userRouter.patch('/', (ctx, next) => {
+  // ctx.body = '修改密码成功!';
+  // 从请求头中，解构出token
+  // 需要注意：解构的名称要和header中的属性匹配才能解构出来
+  const { authorization } = ctx.request.header; // koa中的header或headers对象是一样的东西，可随意替换使用
+    
+  // 从第2点可以知道真正携带的token有前缀，那么就将前缀去除，得到真实token
+  const toekn = authorization.replace('Bearer ', '');
+  console.log(toekn);
+});
+```
+
+## 4 测试
+
+![image-20210925102550136](Readme.assets/image-20210925102550136.png)
+
+# 十九、创建用户授权中间件
+
+将授权步骤都揉杂在路由中，显然是不恰当的，鉴于授权行为的特殊，那么就单独创建一个中间件文件处理
+
+在 `/middleware/auth.middleware.js`
+
+**将第十八步骤的解析token，转移到中间件当中**
+
+## 1 token的验证方法：
+
+同步的方式：如果正确，则返回payload的内容；如果不正确，则抛出错误
+![image-20210925105520270](Readme.assets/image-20210925105520270.png)
+
+## 2 用一个try/catch来处理，可以捕获异常
+
+```js
+// auth.middleware.js
+// 此文件：用于授权行为的中间件
+
+// 导入jwt包
+const jwt = require('jsonwebtoken');
+// 导入密钥
+const { JWT_SECRET } = require('../config/config.default');
+
+const auth = async (ctx, next) => {
+  // 从请求头中，解构出token
+  const { authorization } = ctx.request.header;
+  const toekn = authorization.replace('Bearer ', '');
+  //   console.log(toekn);
+  // 用try/catch来包裹
+  try {
+    // payload中包含了（id,user_name,is_admin）
+    const payload = jwt.verify(toekn, JWT_SECRET);
+    // 将成功解析出来的payload赋值，以后获取就使用state.user
+    ctx.state.user = payload;
+  } catch (error) {
+    console.log('token错误！', error);
+    return;
+  }
+  await next();
+};
+
+module.exports = {
+  auth,
+};
+```
+
+## 3 异常情况及类型
+
+- token超时/过期
+
+  Error object:
+
+  - name: 'TokenExpiredError'
+  - message: 'jwt expired'
+  - expiredAt: [ExpDate]
+
+- token错误/无效
+
+  Error object:
+
+  - name: 'JsonWebTokenError'
+  - message:
+    - 'jwt malformed'
+    - 'jwt signature is required'
+    - 'invalid signature'
+    - 'jwt audience invalid. expected: [OPTIONS AUDIENCE]'
+    - 'jwt issuer invalid. expected: [OPTIONS ISSUER]'
+    - 'jwt id invalid. expected: [OPTIONS JWT ID]'
+    - 'jwt subject invalid. expected: [OPTIONS SUBJECT]'
+
+- token解析出错（用于其他可能情况的出错处理，非官方）
+
+```js
+// ---------------token错误部分----------------//
+  // token过期，用于token解析
+  tokenExpiredError: {
+    code: '10101',
+    message: 'token已过期',
+    result: '',
+  },
+  invalidToken: {
+    code: '10102',
+    message: 'token无效',
+    result: '',
+  },
+  tokenAnalyzeError: {
+    code: '10103',
+    message: 'token解析错误',
+    result: '',
+  },
+      
+---------------------------------------------------
+// 错误处理
+    case '10101':
+      status = 400;
+      break;
+    case '10102':
+      status = 400;
+      break;
+    case '10103':
+      status = 400;
+      break;
+```
+
+导入使用：
+
+```js
+// 导入错误类型
+const {
+  tokenExpiredError,
+  invalidToken,
+  tokenAnalyzeError,
+} = require('../constant/err.type');
+
+--------------------------------
+//补充在上一节的catch部分：
+catch (error) {
+    // console.log('token错误！', error);
+    // return;
+    // token验证异常处理，因为case中return一个结果出去了，就不用写break了
+    switch (error.name) {
+      case 'TokenExpiredError':
+        console.error('token过期', error);
+        return ctx.app.emit('error', tokenExpiredError, ctx);
+      case 'JsonWebTokenError':
+        console.error('token无效', error);
+        return ctx.app.emit('error', invalidToken, ctx);
+      default:
+        console.error('token解析出错！', error);
+        return ctx.app.emit('error', tokenAnalyzeError, ctx);
+    }
+  }
+```
+
+## 4 中间件的使用
+
+在路由router层，当用户访问`/users/` 时（修改用户密码接口），patch上来的password正式生效之前，就进行一次token验证
+
+```js
+// 因为前面有prefix : '/users'  ，所以这里的访问页面路径只是一个杠：/
+// 修改密码接口
+userRouter.patch('/', auth);
+```
+
+## 5 测试
+
+- token值正确，在有效期内：
+  ![image-20210925123315277](Readme.assets/image-20210925123315277.png)
+
+- token值错误，在有效期内：
+  ![image-20210925123348917](Readme.assets/image-20210925123348917.png)
+
+- token正确，超时/过期：
+  ![image-20210925123603819](Readme.assets/image-20210925123603819.png)
+
+- token错误，超时/过期：
+  ![image-20210925123645203](Readme.assets/image-20210925123645203.png)
+
+---
+
+## postman工具补充使用技巧
+
+postman支持：发送前脚本（pre-request script），响应后脚本（Tests）-JS类型
+
+- 需求：将成功登录，`/login/`颁发的token存储为一个变量，提供给`/user/`使用
+
+步骤：
+
+- 定义一个集合变量
+  - 所有的接口都是写在一个文件夹下，那个文件夹就是：集合
+  - ![image-20210925125430787](Readme.assets/image-20210925125430787.png)
+  - ![image-20210925125528190](Readme.assets/image-20210925125528190.png)
+- 编写 `/login/`下的登录成功响应脚本
+  - ![image-20210925130309087](Readme.assets/image-20210925130309087.png)
+
+- 在`/users/`接口下使用集合变量
+  ![image-20210925130712349](Readme.assets/image-20210925130712349.png)
+
+- 测试：
+
+  - 成功登录后，查看集合中token有无赋值：
+
+    - 接口脚本测试结果：
+      ![image-20210925130921962](Readme.assets/image-20210925130921962.png)
+
+    - ![image-20210925130606872](Readme.assets/image-20210925130606872.png)
+
+      ![image-20210925130544038](Readme.assets/image-20210925130544038.png)
+
+  - 测试`/users/` 接口是否正常：
+
+    - 可重复配置Type，再引用{{token}}，或直接继承自parent![image-20210925130820095](Readme.assets/image-20210925130820095.png)
+
+    - ![image-20210925131334622](Readme.assets/image-20210925131334622.png)
+
+# 二十、修改/更新用户信息
+
+## 1 步骤一：获取数据
+
+验证正确和有效的用户token之后，便在`/users/` 接口继续完成用户的密码修改流程
+
+对`patch`上来的用户新密码进行加密处理，复用中间件：`cryptPassword`，会得到一个加密了的` ctx.request.body.password密文: password原文`，在下一个中间件中，就可获取到加密的密码
+
+由于修改用户信息的流程涉及到多个其他步骤，所以就将该文件定义在controller中，再有多个中间件来集合进去
+
+```js
+// user.controller.js
+  // 修改用户信息
+  async changePassword(ctx, next) {
+    // auth中已经解析出payload，将用户的信息存储到ctx.state.user当中了
+    // 那么可以借助用户信息，查询数据库，并操作数据库，实际修改用户密码
+    // 用户的新密码也已经由加密中间件加密
+    // 1、获取数据
+    const id = ctx.state.user.id;
+    const password = ctx.request.body.password;
+    // console.log(id, password);
+    // 2、操作数据库
+    
+    // 3、返回结果
+    // ctx.body = '成功修改密码！';
+    await next();
+  }
+}
+```
+
+---
+
+## 补充sequelize更新查询数据库
+
+简单的update查询接受两个参数：
+
+- 参数1：需要修改的属性与新的赋值，对象类型；
+- 参数2：where语句，限制查询条件/范围，双层对象类型：{ where: {最终条件} }
+
+![image-20210925174117156](Readme.assets/image-20210925174117156.png)
+
+---
+
+## 2 步骤二：数据库的操作
+
+对数据库的操作，要到service层进行
+
+从sequelize的update方法中可以看到，需要传入两个参数
+
+想到这个update方法不止针对密码修改，还可以针对其他的属性修改，那么就将其写成一个较为通用的对象属性修改方法
+
+根据传递进来的参数，来决定需要更改哪些属性，所以这个update方法先要将所有的属性列举出来
+
+另外：update方法返回的是更新的数量（数组类型）,那么可以通过是否有更新的数量来判断有无更新成功，这里返回出去一个Boolean值
+
+```js
+  // 数据库更新查询操作，新属性替换旧属性
+  // id为必要项，将通过id来作为限制查询条件
+  async updateById({ id, user_name, password, is_admin }) {
+    const whereOpt = { id };
+    const newUser = {};
+    // 拼接需要修改的属性，这里使用短路运算
+    // 即：用户可以修改以下三种属性中的任意数量属性
+    user_name && Object.assign(newUser, { user_name });
+    password && Object.assign(newUser, { password });
+    is_admin && Object.assign(newUser, { is_admin });
+
+    // sequelize的简单update查询方法，数据库处理用异步
+    // update会返回一个数组，表示更新的数量，如：[1]表示更新了一条记录
+    const res = await User.update(newUser, { where: whereOpt });
+    return res[0] ? true : false;
+  }
+```
+
+## 3 步骤三：controller层对更新结果的处理
+
+因为update方法返回的是一个Boolean，那么用if/else来处理即可
+
+```js
+	// 2、操作数据库
+    // 从service层能拿到修改的结果：true/false
+    if (await updateById({ id, password })) {
+      ctx.body = {
+        code: '0',
+        message: '密码修改成功！',
+        result: '',
+      };
+    } else {
+      ctx.body = {
+        code: '10007',
+        message: '修改密码失败！',
+        result: '',
+      };
+    }
+```
 

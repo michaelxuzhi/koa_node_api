@@ -1,16 +1,18 @@
 // 导入路由
 const Router = require('koa-router');
-// 导入验证器，在controller之前先把关
+// 导入验证器等其他中间件，在controller之前先把关
 const {
   userValidator,
   verifyUser,
   cryptPassword,
   verifyLogin,
 } = require('../middleware/user.middleware');
+// 导入auth等其他中间件，在controller之前先把关
+const { auth } = require('../middleware/auth.middleware');
 
 // 新版：通过controller下的对应处理文件来触发回调
 // require的是controller中实例化出来的一个对象，我们要使用的是对象中的一个方法，所以进行解构
-const { register, login } = require('../controller/user.controller');
+const { register, login, changePassword } = require('../controller/user.controller');
 // 实例化
 // prefix参数是默认拼接参数，即：prefix+处理函数中的路径，才是最终的路由
 const userRouter = new Router({ prefix: '/users' });
@@ -23,8 +25,12 @@ const userRouter = new Router({ prefix: '/users' });
 // });
 
 // 根据接口文档，使用正确的http方式
+// 注册接口
 userRouter.post('/register', userValidator, verifyUser, cryptPassword, register);
+// 登录接口
 userRouter.post('/login', userValidator, verifyLogin, login);
+// 修改密码接口
+userRouter.patch('/', auth, cryptPassword, changePassword);
 
 // 导出userRouter
 module.exports = userRouter;

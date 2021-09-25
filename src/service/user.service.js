@@ -31,6 +31,23 @@ class UserService {
     });
     return res ? res.dataValues : null;
   }
+
+  // 数据库更新查询操作，新属性替换旧属性
+  // id为必要项，将通过id来作为限制查询条件
+  async updateById({ id, user_name, password, is_admin }) {
+    const whereOpt = { id };
+    const newUser = {};
+    // 拼接需要修改的属性，这里使用短路运算
+    // 即：用户可以修改以下三种属性中的任意数量属性
+    user_name && Object.assign(newUser, { user_name });
+    password && Object.assign(newUser, { password });
+    is_admin && Object.assign(newUser, { is_admin });
+
+    // sequelize的简单update查询方法，数据库处理用异步
+    // update会返回一个数组，表示更新的数量，如：[1]表示更新了一条记录
+    const res = await User.update(newUser, { where: whereOpt });
+    return res[0] ? true : false;
+  }
 }
 
 // 导出数据库操作，主要是路由层使用，所以要在路由controller中导入
