@@ -21,6 +21,8 @@ app.use(KoaBody());
 // app.use(goodsRouter.routes()); // 商品模块
 // 新版-路由注册
 app.use(router.routes());
+// 限制路由接口的http请求方式，只允许router层规定的方式
+app.use(router.allowedMethods());
 // 统一错误事件监听，处理
 // 因为errhandler导出的是一个匿名函数，所以这里直接使用即可
 app.on('error', errhandler);

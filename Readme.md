@@ -1889,3 +1889,33 @@ postman支持：发送前脚本（pre-request script），响应后脚本（Test
 
 - 在goodsController中，有处理上传商品图片的upload方法，本来upload是作为一个通用的中间件，用于各类文件的上传，不只是图片，但是此项目没有过于复杂的需求，upload只是用于此，那么就先这样写
 
+
+
+
+
+---
+
+### 针对不支持的http请求方式，返回501(不支持该方式)的状态码
+
+因为http请求方式有很多，但是路由不能每一个都支持，而且有额外的限制，那么对于那些不支持的方式，则要返回一个501状态码，告知用户该http请求方式不被该路由支持
+
+- 我们在router层已经定义了接口的请求方式：
+  ![image-20210926232125026](Readme.assets/image-20210926232125026.png)![image-20210926232906241](Readme.assets/image-20210926232906241.png)
+
+- 在`app/index` 中，使用`router.allowdMethods()`，即可规定请求方式
+
+  ```js
+  // 新版-路由注册
+  app.use(router.routes());
+  // 限制路由接口的http请求方式，只允许router层规定的方式
+  app.use(router.allowedMethods());
+  
+  
+  // 链式操作，写法：
+  app.use(router.routes()).use(router.allowedMethods());
+  ```
+
+- 测试：在一个只允许post请求的upload接口，使用了LOCK和GET方式，会提示：501：未实现的；405：方式不被允许
+  ![image-20210926232755034](Readme.assets/image-20210926232755034.png)
+
+  ![image-20210926232823360](Readme.assets/image-20210926232823360.png)
