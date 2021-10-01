@@ -9,8 +9,10 @@ const {
   tokenExpiredError,
   invalidToken,
   tokenAnalyzeError,
+  hasNotAdminPermisson,
 } = require('../constant/err.type');
 
+// 验证用户的授权信息，用户是否登录
 const auth = async (ctx, next) => {
   // 从请求头中，解构出token
   const { authorization } = ctx.request.header;
@@ -41,6 +43,17 @@ const auth = async (ctx, next) => {
   await next();
 };
 
+// 判断用户权限
+const hadAdminPermisson = async (ctx, next) => {
+  const { is_admin } = ctx.state.user;
+  if (!is_admin) {
+    console.error('用户不是管理员', ctx.state.user);
+    ctx.app.emit('error', hasNotAdminPermisson, ctx);
+    return;
+  }
+  await next();
+};
 module.exports = {
   auth,
+  hadAdminPermisson,
 };

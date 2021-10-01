@@ -1919,3 +1919,39 @@ postman支持：发送前脚本（pre-request script），响应后脚本（Test
   ![image-20210926232755034](Readme.assets/image-20210926232755034.png)
 
   ![image-20210926232823360](Readme.assets/image-20210926232823360.png)
+
+---
+
+## 3 文件上传
+
+用户可以上传文件是在已经成功登录的前提下，所以在触发到`/upload`路由时，也需要再次判断用户是否已登录（即：判断用户授权信息是否正确）
+
+```js
+// 导入判断用户授权是否正常中间件
+const { auth } = require('../middleware/auth.middleware');
+
+goodsRouter.post('/upload', auth, upload);
+```
+
+
+
+在确定用户授权信息正确后，是否允许用户进行文件上传，那就要判断用户的权限：
+
+- is_admin = true // 为管理员，可以进行上传
+- is_admin = fasle // 不为管理员，不可以上传
+
+对用户权限的判断，写在`auth`中;
+
+```js
+// 判断用户权限
+const hadAdminPermisson = async (ctx, next) => {
+  const { is_admin } = ctx.state.user;
+  if (!is_admin) {
+    console.error('用户不是管理员', ctx.state.user);
+    ctx.app.emit('error', hasNotAdminPermisson, ctx);
+    return;
+  }
+  await next();
+};
+```
+

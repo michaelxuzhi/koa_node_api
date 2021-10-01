@@ -29,6 +29,9 @@ module.exports = (err, ctx) => {
     case '10103':
       status = 400;
       break;
+    case '10201':
+      status = 400;
+      break;
     default:
       status = 500;
       break;

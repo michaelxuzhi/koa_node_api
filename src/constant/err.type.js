@@ -53,4 +53,10 @@ module.exports = {
     message: 'token解析错误',
     result: '',
   },
+  // ----------------用户权限错误部分-------------//
+  hasNotAdminPermisson: {
+    code: '10201',
+    message: '用户无管理员权限',
+    result: '',
+  },
 };
