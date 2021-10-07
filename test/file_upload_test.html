@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>file_upload_test</title>
+  </head>
+  <!-- 注意：这个上传html只是触发了upload接口,但是服务端会对登录/token校验/权限校验流程都进行判断,所以用此文件进行文件上传时,可以先屏蔽掉校验步骤 -->
+  <body>
+    <!-- 使用表单提交的方式给文件上传接口发送一个文件 -->
+    <!-- action是对应的接口地址,这里就直接写死,对应的是postman的接口地址 -->
+    <!-- enctype编码方式,对应的是postman中body的方式 -->
+    <!-- method是http的请求方式,对应postman的请求方式 -->
+    <form
+      action="http://localhost:8000/goods/upload"
+      enctype="multipart/form-data"
+      method="post"
+    >
+      <!-- 第一个input：文件选择按钮,类型type:file,name对应的是postman中的key,也即是：koa-body中获取某个上传文件的key -->
+      <input type="file" name="filesFromUser" />
+      <!-- 第二个input：提交按钮 -->
+      <input type="submit" value="提交" />
+    </form>
+  </body>
+</html>

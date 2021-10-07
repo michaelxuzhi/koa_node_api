@@ -32,10 +32,17 @@ module.exports = (err, ctx) => {
     case '10201':
       status = 400;
       break;
+    case '10301':
+      status = 400;
+      break;
+    case '10302':
+      status = 400;
+      break;
     default:
       status = 500;
       break;
   }
   ctx.status = status;
   ctx.body = err;
+  return;
 };

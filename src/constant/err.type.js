@@ -1,6 +1,6 @@
 // 常见的错误类型及其返回出去的log内容
 // 100开头：用户的登录注册模块
-// 101开头：toekn验证模块
+// 101开头：token验证模块
 module.exports = {
   userFormatError: {
     code: '10001',
@@ -57,6 +57,17 @@ module.exports = {
   hasNotAdminPermisson: {
     code: '10201',
     message: '用户无管理员权限',
+    result: '',
+  },
+  // ----------------文件上传错误部分-------------//
+  fileUploadError: {
+    code: '10301',
+    message: '文件上传过程出错',
+    result: '',
+  },
+  unSupportedFileType: {
+    code: '10302',
+    message: '文件格式不支持',
     result: '',
   },
 };

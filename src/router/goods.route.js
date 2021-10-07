@@ -12,7 +12,10 @@ const { auth, hadAdminPermisson } = require('../middleware/auth.middleware');
 const goodsRouter = new Router({ prefix: '/goods' });
 
 // 图片上传接口
-goodsRouter.post('/upload', auth, hadAdminPermisson, upload);
+// goodsRouter.post('/upload', upload);
+// upload测试用
+goodsRouter.post('/upload', upload);
+// console.log('触发到了upload');
 
 // 导出，给index注册用
 module.exports = goodsRouter;

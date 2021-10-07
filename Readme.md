@@ -1431,7 +1431,7 @@ JWT_SECRET = abc
 
 - 载荷：常见一个对象类型
 - 密钥：常见一个字符串类型
-- （可选）超时时间：一个对象：`{expiresIn:1d}`=1天
+- （可选）超时时间：一个对象：`{expiresIn:1d}`=1天 // 为了之后快速过期，建议使用：1min
   - 超时时间格式：`https://github.com/vercel/ms`
   - ![image-20210925011038814](Readme.assets/image-20210925011038814.png)
 
@@ -1924,6 +1924,10 @@ postman支持：发送前脚本（pre-request script），响应后脚本（Test
 
 ## 3 文件上传
 
+### 3.1 用户权限判断
+
+判断用户的`is_admin`变量是否 `= true 或 1`
+
 用户可以上传文件是在已经成功登录的前提下，所以在触发到`/upload`路由时，也需要再次判断用户是否已登录（即：判断用户授权信息是否正确）
 
 ```js
@@ -1955,3 +1959,240 @@ const hadAdminPermisson = async (ctx, next) => {
 };
 ```
 
+### 3.2 使用`koa-body`的文件上传功能
+
+koa-body是支持文件上传功能的，在实例化`koa-body`时的参数配置：
+
+创建一个文件夹，用于存放上传上来的文件
+`src/uploads`
+
+- multipart ：默认值是false，解析文件上传；
+
+- formidable：关于文件上传的详细配置，主要配置两个：
+
+  - uploadDir：前端文件上传到服务器的存储路径
+
+    - **在配置选项下：路径不能使用相对路径（不推荐，不是不可以）**
+
+    - 在options里的相对路径，不是相对当前文件，是相对`process.cwd()`，即：当前脚本进程的对应路径，也就是该脚本启动是使用`npm run dev`：
+      ![image-20211004120100400](Readme.assets/image-20211004120100400.png)
+
+    - 可以看到脚本的运行的路径是`在项目根目录下执行dev`，即：相对路径是这个项目的根目录：
+      ![image-20211004120550328](Readme.assets/image-20211004120550328.png)
+
+    - 也就是说：不是不可以使用相对路径，而是要知道相对哪一条路径
+
+    - 推荐使用`node 的path所指向的绝对路径`
+
+      - 导入path与使用：
+
+        ```js
+        const path = require('path')
+        // 配置信息：只截取一部分
+        // __dirname是本文件的路径
+        uploadDir: path.join(__dirname, '../uploads'),
+        ```
+
+        
+
+  - keepExtensions：保留文件后缀名
+
+- 配置信息如下：
+
+  ```js
+  // koa-body中间件的注册，必须在路由中间件之前
+  // 补充：使用koa-body进行文件上传的配置
+  // multipart：解析
+  // formidable：文件上传的详细配置
+  app.use(
+    KoaBody({
+      multipart: true,
+      formidable: {
+        // 推荐使用绝对路径
+        uploadDir: path.join(__dirname, '../uploads'),
+        keepExtensions: true,
+      },
+    })
+  );
+  ```
+
+
+### 3.3 上传文件信息打印
+
+koa-body中对上传的文件的获取，是将内容都包含在`ctx.request.files对象，结构：{ key:{} }`当中：
+![image-20211007113342341](Readme.assets/image-20211007113342341.png)
+
+如果要具体到其中的文件，就要使用key来指代：
+
+- postman中的key对应的文件：
+  ![image-20211007112757254](Readme.assets/image-20211007112757254.png)
+
+```js
+// 商品模块的控制器文件
+class GoodsController {
+  async upload(ctx, next) {
+    console.log('走到了upload，图片上传成功');
+    // 获取到上传到服务器的文件信息
+    // ctx.request.files是请求上传的文件一个整体对象：{key:{}}
+    // filesFromUser对应的是上传时用的key（自己设置），如：postman中Body->form-data用的就是filesFromUser来代替
+    console.log(ctx.request.files.filesFromUser);
+    ctx.body = '图片上传成功!';
+  }
+}
+```
+
+- 打印出来的部分信息：
+  ![image-20211007112830154](Readme.assets/image-20211007112830154.png)
+
+
+
+### 3.4 成功上传后给前端返回信息
+
+- 当文件上传成功时，需要给前端返回一个文件的url，即：访问该文件在服务器中的存储地址，让前端可以访问，这里使用path.basename()：
+  ![image-20211007115743239](Readme.assets/image-20211007115743239.png)
+
+  直接将文件名给返回出去：
+  ![image-20211007115918788](Readme.assets/image-20211007115918788.png)
+
+  ![image-20211007115900788](Readme.assets/image-20211007115900788.png)
+
+- 当文件在上传过程中出错时，也要有相应的错误提示
+
+- 整个处理过程：错误类型已经定义在err.type.js中了
+
+  ```js
+  // 商品模块的控制器文件
+  // 导入path，用于成功上传文件后拼接url返回给前端
+  const path = require('path');
+  // 导入错误类型
+  const { fileUploadError } = require('../constant/err.type');
+  class GoodsController {
+    async upload(ctx, next) {
+      const { filesFromUser } = ctx.request.files;
+      // 如果文件上传，就能获取该文件信息
+      if (filesFromUser) {
+        ctx.body = {
+          code: 0,
+          message: '文件上传成功',
+          // 这里的result是为了给前端返回一个url，让前端能访问到这个成功上传的文件
+          result: {
+            goodsImg: path.basename(filesFromUser.path),
+          },
+        };
+      } else {
+        return ctx.app.emit('error', fileUploadError, ctx);
+      }
+    }
+  }
+  ```
+
+  
+
+### 3.5 使用`koa-static`插件对静态资源的解析
+
+在给前端返回出去一个url后，那么前端希望能通过`localhost:8000/+url`来访问到该文件，让文件显示出来
+
+此时就需要对服务端的静态资源进行解析，以达到给前端访问的目的
+
+#### 3.5.1 安装`koa-static`
+
+```js
+npm install koa-static
+```
+
+这个插件的用途：将某个文件夹设置成静态资源文件夹，前端访问静态资源时，就直接到该文件夹中找
+
+#### 3.5.2 注册、使用、配置
+
+在`app/index.js`中
+
+```js
+// 导入
+const KoaStatic = require('koa-static');
+// 因为路径需要用到path，这里说明一下
+const path = require('path')
+
+// 使用和配置
+// 配置是传进一个路径，即：需要将该路径作为静态资源文件夹
+app.use(KoaStatic(path.join(__dirname,'../uploads')))
+```
+
+#### 3.5.3 可以在浏览器中访问到静态资源了
+
+![image-20211007122710446](Readme.assets/image-20211007122710446.png)
+
+### 3.6 使用自写html来提交文件
+
+之前都是使用postman来进行接口的访问测试，也可以创建一个test文件夹，用于存放所写的的单元测试脚本
+
+创建一个`file_upload_test.html`来测试upload接口
+
+**需要注意：这个上传html只是触发了upload接口,但是服务端会对登录/token校验/权限校验流程都进行判断,所以用此文件进行文件上传时,可以先屏蔽掉校验步骤**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>file_upload_test</title>
+  </head>
+  <!-- 注意：这个上传html只是触发了upload接口,但是服务端会对登录/token校验/权限校验流程都进行判断,所以用此文件进行文件上传时,可以先屏蔽掉校验步骤 -->
+  <body>
+    <!-- 使用表单提交的方式给文件上传接口发送一个文件 -->
+    <!-- action是对应的接口地址,这里就直接写死,对应的是postman的接口地址 -->
+    <!-- enctype编码方式,对应的是postman中body的方式 -->
+    <!-- method是http的请求方式,对应postman的请求方式 -->
+    <form
+      action="http://localhost:8000/goods/upload"
+      enctype="multipart/form-data"
+      method="post"
+    >
+      <!-- 第一个input：文件选择按钮,类型type:file,name对应的是postman中的key,也即是：koa-body中获取某个上传文件的key -->
+      <input type="file" name="filesFromUser" />
+      <!-- 第二个input：提交按钮 -->
+      <input type="submit" value="提交" />
+    </form>
+  </body>
+</html>
+
+```
+
+在屏蔽掉校验步骤后，测试结果如下：
+
+```js
+// 图片上传接口
+// goodsRouter.post('/upload', auth, hadAdminPermisson, upload);
+// upload测试用
+goodsRouter.post('./upload', upload);
+```
+
+![image-20211007140554281](Readme.assets/image-20211007140554281.png)
+
+可以看到文件可以被上传到对应的接口下的url，并返回正确的信息
+
+### 3.7 上传文件类型的判断
+
+在文件上传后，会有一个`type属性`，这个属性就是该文件的属性，那么可以通过对这个属性的判断，来拒绝或接收该文件的传入
+
+如：只接收jpeg、png格式图片，那么可以设置一个过滤的数组，当传入的文件类型不在这个数组当中，那么就返回个错误提示
+
+```js
+// 设置可接收文件格式
+const fileTypes = ['image/jpeg', 'image/png'];
+// 过滤判断一下传入的文件格式，使用数组的includes方法，返回一个boolean
+// false的情况，返回出去一个错误提示
+if (!fileTypes.includes(filesFromUser.type)) {
+  return ctx.app.emit('error', unSupportedFileType, ctx);
+}
+```
+
+---
+
+**对文件上传这一块的总结：即使有对上传这一流程都加以验证和类型判断、错误提示等，但是仍然是不能阻止文件上传到服务端的，因为我们是在文件成功上传之后才进行的校验，而不是文件上传之前。**
+
+- **文件上传之后再进行判断。利：可以做统一的验证流程和错误判断；弊：任何文件都会被上传**
+- **文件上传之前进行判断，是要在配置`formidable`的时候就要进行处理和错误提示。利：可以正确符合需求，阻止文件的上传；弊：无法做到统一的错误处理，需要另写一个中间件来配合提示**
+
+****
