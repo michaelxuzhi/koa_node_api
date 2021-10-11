@@ -49,7 +49,7 @@ const auth = async (ctx, next) => {
 };
 
 // 判断用户权限
-const hadAdminPermisson = async (ctx, next) => {
+const hadAdminPermission = async (ctx, next) => {
   console.log('走到了hadAdmin');
   const { is_admin } = ctx.state.user;
   if (!is_admin) {
@@ -62,5 +62,5 @@ const hadAdminPermisson = async (ctx, next) => {
 };
 module.exports = {
   auth,
-  hadAdminPermisson,
+  hadAdminPermission,
 };

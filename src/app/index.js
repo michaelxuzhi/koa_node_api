@@ -7,6 +7,9 @@ const Koa = require('koa');
 const KoaBody = require('koa-body');
 // 静态资源解析设置中间件
 const KoaStatic = require('koa-static');
+
+// 参数校验中间件
+const parameter = require('koa-parameter');
 // 旧版：路由
 // const userRouter = require('../router/user.route'); // 用户模块
 // const goodsRouter = require('../router/goods.route'); // 商品模块
@@ -35,6 +38,17 @@ app.use(
 );
 // 配置服务端静态资源目录，让前端可以访问到后端资源文件
 app.use(KoaStatic(path.join(__dirname, '../uploads')));
+
+// 参数校验中间件的注册和使用
+// 将所有方法都注册到app当中，意味着Koa实例下的所有中间件、路由等都可以直接使用koa-parameter的方法
+app.use(parameter(app));
+// app中可以使用parameter的所有方法
+app.use(async ctx => {
+  ctx.verifyParams({
+    name: 'string',
+  });
+});
+
 // 旧版：注册中间件，路由中间件的实例
 // app.use(userRouter.routes()); // 用户模块
 // app.use(goodsRouter.routes()); // 商品模块

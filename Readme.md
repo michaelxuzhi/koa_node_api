@@ -1948,11 +1948,11 @@ goodsRouter.post('/upload', auth, upload);
 
 ```js
 // 判断用户权限
-const hadAdminPermisson = async (ctx, next) => {
+const hadAdminPermission = async (ctx, next) => {
   const { is_admin } = ctx.state.user;
   if (!is_admin) {
     console.error('用户不是管理员', ctx.state.user);
-    ctx.app.emit('error', hasNotAdminPermisson, ctx);
+    ctx.app.emit('error', hasNotAdminPermission, ctx);
     return;
   }
   await next();
@@ -2163,7 +2163,7 @@ app.use(KoaStatic(path.join(__dirname,'../uploads')))
 
 ```js
 // 图片上传接口
-// goodsRouter.post('/upload', auth, hadAdminPermisson, upload);
+// goodsRouter.post('/upload', auth, hadAdminPermission, upload);
 // upload测试用
 goodsRouter.post('./upload', upload);
 ```
@@ -2195,4 +2195,76 @@ if (!fileTypes.includes(filesFromUser.type)) {
 - **文件上传之后再进行判断。利：可以做统一的验证流程和错误判断；弊：任何文件都会被上传**
 - **文件上传之前进行判断，是要在配置`formidable`的时候就要进行处理和错误提示。利：可以正确符合需求，阻止文件的上传；弊：无法做到统一的错误处理，需要另写一个中间件来配合提示**
 
+（待填坑！！！）
+
 ****
+
+# 二十二、商品发布
+
+## 1使用新路由接口
+
+```js
+// 路由的实例
+const goodsRouter = new Router({ prefix: '/goods' });
+
+//导入产品发布参数验证的中间件
+const { validator } = require('../middleware/goods.middleware');
+
+// 发布商品接口
+goodsRouter.post('/',auth, hadAdminPermission, calidator)
+```
+
+## 2参数验证中间件，这里使用的是`koa-parameter`
+
+- 安装`koa-parameter`
+
+  ```js
+  npm install koa-parameter
+  ```
+
+  简单的文档：
+
+  - 注册与使用
+
+    - 在app.js文件中，导入并注册
+
+    ```js
+    const Koa = require('koa');
+    // 导入
+    const parameter = require('koa-parameter');
+    
+    const app = new Koa();
+    
+    // 注册
+    // 将app，即Koa实例当作参数传入，相当于把parameter的所有方法都注册在实例当中，主要是：verifyParams方法
+    app.use(parameter(app));
+    
+    
+    // 这里演示的是直接在app.js中使用方式，具体的使用是放在专门的validator中间件文件里处理传进来的参数
+    // 使用
+    // 需要放在所有的路由处理之前
+    // 注册的时候已经将方法都放在实例当中了，所以就可以直接使用
+    // 意味着Koa实例下的所有中间件、路由等都可以直接使用koa-parameter的方法
+    app.use( async(ctx)=>{
+        ctx.verifyParams({
+            // name是传进来的参数
+            name: 'string',
+        })
+    })
+    ```
+
+    
+
+- 创建新的商品中间件文件`goods.middleware.js`
+
+  ```js
+  const validator = async(ctx, next)=>{
+      
+  }
+  
+  module.exports = {
+      validator,
+  }
+  ```
+
+  
