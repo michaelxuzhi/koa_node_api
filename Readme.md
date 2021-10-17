@@ -2236,7 +2236,7 @@ goodsRouter.post('/',auth, hadAdminPermission, calidator)
     const app = new Koa();
     
     // 注册
-    // 将app，即Koa实例当作参数传入，相当于把parameter的所有方法都注册在实例当中，主要是：verifyParams方法
+    // 将app，即Koa实例当作参数传入，相当于把parameter的所有方法都注册在实例/原型当中，主要是：verifyParams方法
     app.use(parameter(app));
     
     
@@ -2258,13 +2258,65 @@ goodsRouter.post('/',auth, hadAdminPermission, calidator)
 - 创建新的商品中间件文件`goods.middleware.js`
 
   ```js
-  const validator = async(ctx, next)=>{
-      
-  }
+  // 导入错误类型
+  const { goodsFomatError } = require('../constant/err.type');
   
-  module.exports = {
-      validator,
-  }
+  // 商品参数校验中间件
+  const validator = async (ctx, next) => {
+    // 因为已经在app上全局注册了parmameter的参数校验方法
+    // 所以这里可以直接使用
+    // 参数通过校验时，会走正常逻辑
+    // 参数没有通过校验，parameter抛出一个错误，那么就要捕获
+    // 使用的是verifyParams函数
+    try {
+      ctx.verifyParams({
+        goods_name: { type: 'string', required: true },
+        goods_price: { type: 'number', required: true },
+        goods_num: { type: 'number', required: true },
+        goods_img: { type: 'string', required: true },
+      });
+    } catch (error) {
+      // 对错误的处理，并中断后续操作
+      // console.log(error);
+      return ctx.app.emit('error', goodsFomatError, ctx);
+    }
+    await next();
+  };
+  
+  module.exports = { validator };
+  
+  ```
+  
+- koa-parameter的自带错误信息：
+  ![image-20211017230350426](Readme.assets/image-20211017230350426.png)
+
+- 虽然koa-parameter自带的错误信息比较齐全详细，但是与项目统一规定的错误格式不一致，为了给前端返回更加明确且格式统一的错误信息，需要新定义一个错误类型用以处理参数格式错误，为了更加清晰和全面，可以将中间件自带的错误信息附加在自定义的错误信息result属性下：
+
+  ```js
+  // 在err.type.js中
+  // ----------------商品参数检验部分-------------//
+    goodsFormatError: {
+      code: '10401',
+      message: '商品参数错误',
+      result: '',
+    },
   ```
 
+  ```js
+  // 在goods.middleware.js当中导入并使用
   
+  // 导入错误类型
+  const { goodsFormatError } = require('../constant/err.type');
+  
+  // 伪代码，在catch中使用即可
+  catch (error) {
+      // 对错误的处理，并中断后续操作
+      // console.log(error);
+      goodsFormat.result = error;
+      return ctx.app.emit('error', goodsFormatError, ctx);
+    }
+  ```
+
+  测试结果：多个参数错误时，错误信息会存储在errors数组下
+  ![image-20211017232150805](Readme.assets/image-20211017232150805.png)
+

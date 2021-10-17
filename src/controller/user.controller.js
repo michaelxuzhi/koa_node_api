@@ -47,7 +47,7 @@ class UserController {
         message: '用户登录成功！',
         result: {
           // token配置参数：{载荷}+密钥+{超时时间}
-          token: jwt.sign(resUserInfo, JWT_SECRET, { expiresIn: '1min' }),
+          token: jwt.sign(resUserInfo, JWT_SECRET, { expiresIn: '1d' }),
         },
       };
     } catch (error) {

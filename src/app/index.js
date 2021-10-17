@@ -42,12 +42,13 @@ app.use(KoaStatic(path.join(__dirname, '../uploads')));
 // 参数校验中间件的注册和使用
 // 将所有方法都注册到app当中，意味着Koa实例下的所有中间件、路由等都可以直接使用koa-parameter的方法
 app.use(parameter(app));
-// app中可以使用parameter的所有方法
-app.use(async ctx => {
-  ctx.verifyParams({
-    name: 'string',
-  });
-});
+// app中直接可以使用parameter的所有方法
+// 但一般不写到这里。会显得很冗杂，参数的校验会放到商品的中间件中
+// app.use(async ctx => {
+//   ctx.verifyParams({
+//     name: 'string',
+//   });
+// });
 
 // 旧版：注册中间件，路由中间件的实例
 // app.use(userRouter.routes()); // 用户模块

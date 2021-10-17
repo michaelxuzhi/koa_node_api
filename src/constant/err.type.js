@@ -70,4 +70,10 @@ module.exports = {
     message: '文件格式不支持',
     result: '',
   },
+  // ----------------商品参数检验部分-------------//
+  goodsFormatError: {
+    code: '10401',
+    message: '商品参数错误',
+    result: '',
+  },
 };
