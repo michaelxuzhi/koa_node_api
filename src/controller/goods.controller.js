@@ -2,8 +2,18 @@
 // 导入path，用于成功上传文件后拼接url返回给前端
 const path = require('path');
 // 导入错误类型
-const { fileUploadError, unSupportedFileType } = require('../constant/err.type');
+const {
+  fileUploadError,
+  unSupportedFileType,
+  publishGoodsError,
+} = require('../constant/err.type');
+
+// 导入goods的service层写入数据库类
+const { createGoods } = require('../service/good.service');
+
+// 控制器中一般是最后一个中间件，所以写不写next都可以
 class GoodsController {
+  // 文件上传中间件
   async upload(ctx, next) {
     console.log('走到了upload，图片上传成功');
     // 获取到上传到服务器的文件信息
@@ -33,6 +43,25 @@ class GoodsController {
       };
     } else {
       return ctx.app.emit('error', fileUploadError, ctx);
+    }
+  }
+
+  // 写入数据库
+  async create(ctx, next) {
+    // 操作数据库
+    // 调用service的craeteGoods方法，将request.body中通过参数检验的合法商品参数写入数据库
+    try {
+      // 写入数据库成功后，获取到返回结果
+      const res = await createGoods(ctx.request.body);
+      // 将结果返回出去
+      ctx.body = {
+        code: 0,
+        message: '商品发布成功！',
+        result: res,
+      };
+    } catch (error) {
+      console.log(error);
+      return ctx.app.emit('error', publishGoodsError, ctx);
     }
   }
 }

@@ -76,4 +76,10 @@ module.exports = {
     message: '商品参数错误',
     result: '',
   },
+  // ---------------商品发布错误-------------//
+  publishGoodsError: {
+    code: '10402',
+    message: '商品发布错误',
+    result: '',
+  },
 };

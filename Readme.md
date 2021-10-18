@@ -2320,3 +2320,75 @@ goodsRouter.post('/',auth, hadAdminPermission, calidator)
   测试结果：多个参数错误时，错误信息会存储在errors数组下
   ![image-20211017232150805](Readme.assets/image-20211017232150805.png)
 
+## 3 将商品数据写入数据库
+
+在经过身份校验、参数校验后，就可以将商品的数据写入数据库了，在`goods.controller.js`层，控制器中一般是最后一个中间件了，所以不太有可能用到next，可以省略不写。
+
+在商品控制器层，需要创建一个`create`方法，在此对商品数据进行操作，写入数据库。
+
+```js
+// 导入goods的service层写入数据库类
+const { createGoods } = require('../service/good.service'); 
+
+class GoodsController {
+// 上传接口忽略    
+ ...   
+// 写入数据库接口
+  async create(ctx, next) {
+    // 操作数据库
+    // 调用service的craeteGoods方法，将request.body中通过参数检验的合法商品参数写入数据库
+    try {
+      // 写入数据库成功后，获取到返回结果
+      const res = await createGoods(ctx.request.body);
+      // 将结果返回出去
+      ctx.body = {
+        code: 0,
+        message: '商品发布成功！',
+        result: res,
+      };
+    } catch (error) {
+      console.log(error);
+      return ctx.app.emit('error', publishGoodsError, ctx);
+    }
+  }
+}
+```
+
+
+
+写入数据库的话，就要调用到 `service`层对数据库的操作，需要设计一个**将商品数据写入数据库的方法：`createGoods`**。这个方法返回一个结果：result的内容则是该件商品的信息。
+
+```js
+class GoodsService {
+  async createGoods(goods) {
+    console.log('测试商品发布成功');
+    // 假的返回数据
+    return {
+      goods_name: '测试商品_名称',
+    };
+  }
+}
+
+module.exports = new GoodsService();
+
+```
+
+
+
+商品控制器层要使用方法操作数据库，最好是写在`try...catch...`中，以免写入操作出错，导致写入失败。
+
+**另外：写入数据库的报错信息中，通常会保留商品的数据结构或数据库表的结构，如果直接将错误信息返回给前端，那么会有信息泄露的风险，所以新定义一个错误类型，统一处理写入操作失败的错误，真正的错误信息可以到服务端错误日志中查看。**
+
+```js
+  // ---------------商品发布错误-------------//
+  publishGoodsError: {
+    code: '10402',
+    message: '商品发布错误',
+    result: '',
+  },
+```
+
+
+
+测试结果：
+![image-20211019001028538](Readme.assets/image-20211019001028538.png)
