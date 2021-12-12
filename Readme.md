@@ -2506,3 +2506,107 @@ module.exports = new GoodsService();
     ```
 
     ![image-20211212163404080](Readme.assets/image-20211212163404080.png)
+
+---
+
+# 二十三、商品修改
+
+修改商品，需要知道准确的商品id
+
+- 修改的方式：put，不用patch，因为修改的时候，**会将所有的商品信息全部传递过去**
+- 如果不传参数，会报错：405（方法不允许，即：需要带一个参数）
+
+## 1 路由设置
+
+- 在goods.route.js中创建一个update路由接口，由前端调用该路由，触发中间件，最终执行到商品信息修改接口(商品信息修改也是用update作为接口名)
+
+  ```js
+  // 修改商品接口
+  goodsRouter.put('/:id', auth, hadAdminPermission, validator, update);
+  ```
+
+  
+
+## 2 controller层update()接口
+
+- controller层主要是对service层的一次封装
+- 这里需要 **传递给service层** 的参数：
+  - 需要修改的商品的id
+  - 需要修改的商品信息
+- 会出现的情况和对应的处理方式
+  ![image-20211212193333158](Readme.assets/image-20211212193333158.png)
+  - 成功修改：`res = true`
+    - 数据库操作返回的res是数组类型，第一个参数res[0]是修改的记录数量
+    - 如果res[0] > 0，则表示修改成功，返回给controller层的res = true
+    - 提示：修改成功
+  - 错误修改：`res = false`，数据库返回的结果`res[0] = 0`，返回给controller层的res = false
+    - 情况一：数据库修改过程出错（其实这里已经被catch了，走不到res[0] = 0的情况）
+      - 提示：修改出错
+    - 情况二：传入的商品id无效，数据库找不到对应商品
+      - 提示：无效商品id
+
+- 容错思路：
+  - 先用try包裹数据库修改操作，如果没有catch到错误，则表明数据库修改过程正常
+  - 在正常的数据库修改结果中如果出现res[0] = 0，则表明传入商品id无效
+
+```js
+  // 商品信息修改
+  async update(ctx, next) {
+    // 操作数据库
+    // 调用service的updateGoods方法，将request.body中通过参数检验的合法商品参数写入数据库
+    try {
+      // 更新数据库中商品信息成功后，获取到返回结果
+      // 需要的参数：商品id、所要修改的商品信息
+      const res = await updateGoods(ctx.params.id, ctx.request.body);
+      // 如果修改成功，从goods.service那边返回的res=true，否则res=false
+      // 将结果返回出去
+      if (res) {
+        ctx.body = {
+          code: 0,
+          message: '商品信息修改成功！',
+          // result: res,
+          // 可以不返回result，因为前端只需要知道状态
+          result: '',
+        };
+      }
+      // 防止前端传入的修改商品id不存在数据库中，导致修改res=false
+      else {
+        return ctx.app.emit('error', invalidGoodsId, ctx);
+      }
+    } catch (error) {
+      console.log(error);
+      return ctx.app.emit('error', updateGoodsError, ctx);
+    }
+  }
+```
+
+## 3 service层updateGoods()接口
+
+- 接收参数：
+
+  - 商品id：id
+  - 所要修改的内容：goods
+
+- 商品id作为筛选条件，goods是修改的信息
+
+- 处理逻辑：
+
+  ```js
+    // 修改商品信息接口
+    async updateGoods(id, goods) {
+      // console.log('测试商品修改成功');
+      // 正式修改商品数据，异步
+      const res = await Goods.update(goods, {
+        where: {
+          id: id,
+        },
+      });
+      // 更新商品数据的结果返回res是一个数组，数组的第一个元素是更新的数据条数，第二个元素是更新的数据，如果更新的数据条数为0，则表示更新失败
+      return res[0] > 0 ? true : false;
+    }
+  ```
+
+
+
+
+

@@ -82,4 +82,16 @@ module.exports = {
     message: '商品发布错误',
     result: '',
   },
+  // ---------------商品更新错误-------------//
+  updateGoodsError: {
+    code: '10403',
+    message: '商品更新错误',
+    result: '',
+  },
+  // ---------------商品信息不存在-------------//
+  invalidGoodsId: {
+    code: '10404',
+    message: '商品信息不存在',
+    result: '',
+  },
 };
