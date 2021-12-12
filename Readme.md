@@ -2606,7 +2606,16 @@ module.exports = new GoodsService();
     }
   ```
 
+## 4 接口测试
 
+- 商品信息不存在：传递的商品id不在数据库中
+  ![image-20211212202018957](Readme.assets/image-20211212202018957.png)
 
+- 成功修改：
+  ![image-20211212202218415](Readme.assets/image-20211212202218415.png)
 
+  - 修改前：
+    ![image-20211212202104870](Readme.assets/image-20211212202104870.png)
 
+  - 修改后：
+    ![image-20211212202245296](Readme.assets/image-20211212202245296.png)
