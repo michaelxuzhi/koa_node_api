@@ -2320,7 +2320,7 @@ goodsRouter.post('/',auth, hadAdminPermission, calidator)
   测试结果：多个参数错误时，错误信息会存储在errors数组下
   ![image-20211017232150805](Readme.assets/image-20211017232150805.png)
 
-## 3 将商品数据写入数据库
+## 3 将商品写入数据库
 
 在经过身份校验、参数校验后，就可以将商品的数据写入数据库了，在`goods.controller.js`层，控制器中一般是最后一个中间件了，所以不太有可能用到next，可以省略不写。
 
@@ -2392,3 +2392,117 @@ module.exports = new GoodsService();
 
 测试结果：
 ![image-20211019001028538](Readme.assets/image-20211019001028538.png)
+
+## 4 数据库层创建商品信息
+
+对数据库的操作是在service层，真正的数据库数据是在数据库映射到model模型的内容 
+
+---
+
+### 补充建表流程
+
+- 在moedl文件夹下创建一个数据表的模型
+
+  - 例如：src/model/goods.model.js
+  - 导入`sequalize`（数据库）
+  - 导入数据库连接 `seq`
+
+- 代码：
+
+  ```js
+  // 商品对象模型的文件
+  // 当从service层实现对数据库的操作时，这里就是实际数据库实例化出来的模型对象，对应的是：商品数据表
+  
+  // 导入数据类型
+  const { DataTypes } = require('sequelize');
+  // 导入sequelize实例化对象，即：seq文件下创建的对象
+  // 数据库连接导入
+  const seq = require('../db/seq');
+  
+  // 创建商品模型，建立数据表
+  const Goods = seq.define('shop_goods', {
+    goods_name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+      comment: '商品名',
+    },
+  });
+  
+  // 第一次则强制建表，在数据表创建完成后，注释掉强制建表语句，避免重复覆盖建表
+  // 强制创建Goods表
+  Goods.sync({ force: true });
+  
+  // 导出数据模型
+  module.exports = Goods;
+  ```
+
+- 强制建表操作：
+  `node xxx\goods.model.js`
+
+- 成功建表：
+  ![image-20211212155828853](Readme.assets/image-20211212155828853.png)
+
+- **成功建表后，要注释掉model中的强制建表语句！！！**
+
+- 查看MySQL
+  ![image-20211212160420632](Readme.assets/image-20211212160420632.png)
+
+---
+
+## 5 发布商品
+
+建表成功后，数据库中就会多出一个商品数据表，接下来就要对数据库表进行写操作，当然我们不是直接操作数据库，而是在`service层对数据模型进行操作`
+
+- 回到`service层`，导入需要操作的模型对象：
+
+  ```js
+  // 导入商品数据表的模型对象
+  const Goods = require("../model/goods.model");
+  
+  // 调用数据模型对象的create()方法操作数据表
+  class GoodsService {
+    async createGoods(goods) {
+      // 正式创建商品数据，异步
+      const res = await Goods.create(goods);
+      return res.dataValues;
+    }
+  }
+  ```
+
+- 接口测试：
+  ![image-20211212162130233](Readme.assets/image-20211212162130233.png)
+
+- 查看数据库：
+  ![image-20211212162208674](Readme.assets/image-20211212162208674.png)
+
+- 补充：在接口测试时，发现MySql在建表时和写数据时，都会附带`createAt`和`updateAt`两个时间戳项。那么数据库中肯定是保留的，只是在接口上就不需要展示出来：
+
+  - 这里用`剩余参数`的方式来处理接口返回的数据，不完整将数据库的数据返回
+    ![image-20211212163113955](Readme.assets/image-20211212163113955.png)
+
+    ```js
+    // 接口测试返回的数据是在goods.controller.js 中处理的
+    
+      // 写入数据库
+      async create(ctx, next) {
+        // 操作数据库
+        // 调用service的craeteGoods方法，将request.body中通过参数检验的合法商品参数写入数据库
+        try {
+          // 写入数据库成功后，获取到返回结果
+          const { createAt, updateAt, ...res } = await createGoods(ctx.request.body);
+          // 将结果返回出去
+          ctx.body = {
+            code: 0,
+            message: '商品发布成功！',
+            result: res,
+          };
+        } catch (error) {
+          console.log(error);
+          return ctx.app.emit('error', publishGoodsError, ctx);
+        }
+      }
+    }
+    ```
+
+    ![image-20211212163404080](Readme.assets/image-20211212163404080.png)

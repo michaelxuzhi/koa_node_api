@@ -1,4 +1,4 @@
-// 对象模型的文件
+// 用户对象模型的文件
 // 模型对象的创建是基于sequelize实例化出来的对象，一个实例化对象=一个数据库表
 // 导入sequelize和其中创建模型的方法
 const { DataTypes } = require('sequelize');

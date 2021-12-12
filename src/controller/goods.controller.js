@@ -52,7 +52,8 @@ class GoodsController {
     // 调用service的craeteGoods方法，将request.body中通过参数检验的合法商品参数写入数据库
     try {
       // 写入数据库成功后，获取到返回结果
-      const res = await createGoods(ctx.request.body);
+      // const result = await createGoods(ctx.request.body);
+      const { createdAt, updatedAt, ...res } = await createGoods(ctx.request.body);
       // 将结果返回出去
       ctx.body = {
         code: 0,
