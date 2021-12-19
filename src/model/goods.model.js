@@ -9,30 +9,37 @@ const { DataTypes } = require('sequelize');
 const seq = require('../db/seq');
 
 // 创建商品模型，建立数据表
-const Goods = seq.define('shop_goods', {
-  goods_name: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true,
-    comment: '商品名',
+const Goods = seq.define(
+  'shop_goods',
+  {
+    goods_name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+      comment: '商品名',
+    },
+    goods_price: {
+      // 价格：使用的是十进制的双精度类型(保留两位小数)
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      comment: '商品价格',
+    },
+    goods_num: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      comment: '商品库存',
+    },
+    goods_img: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      comment: '商品图片的url',
+    },
   },
-  goods_price: {
-    // 价格：使用的是十进制的双精度类型(保留两位小数)
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-    comment: '商品价格',
-  },
-  goods_num: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    comment: '商品库存',
-  },
-  goods_img: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    comment: '商品图片的url',
-  },
-});
+  {
+    // 建立偏执表
+    paranoid: true,
+  }
+);
 
 // 强制创建Goods表
 // Goods.sync({ force: true });

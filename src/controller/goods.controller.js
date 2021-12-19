@@ -9,10 +9,16 @@ const {
   invalidGoodsId,
   updateGoodsError,
   deleteGoodsError,
+  softRemoveGoodsError,
 } = require('../constant/err.type');
 
 // 导入goods的service层写入数据库类
-const { createGoods, updateGoods, removeGoods } = require('../service/good.service');
+const {
+  createGoods,
+  updateGoods,
+  removeGoods,
+  softRemoveGoods,
+} = require('../service/good.service');
 
 // 控制器中一般是最后一个中间件，所以写不写next都可以
 class GoodsController {
@@ -100,13 +106,14 @@ class GoodsController {
   // 商品信息删除-硬删除
   async remove(ctx, next) {
     // 操作数据库
-    // 调用service的removeGoods方法，将request.body中通过参数检验的合法商品参数写入数据库
+    // 调用service的removeGoods方法，将数据库中与ctx.params.id相对应的商品信息删除
     try {
       // 删除数据库中商品信息成功后，获取到返回结果
       // 需要的参数：商品id
       const res = await removeGoods(ctx.params.id);
       // 如果删除成功，从goods.service那边返回的res=true，否则res=false
       // 将结果返回出去
+      // console.log(res);
       if (res) {
         ctx.body = {
           code: 0,
@@ -123,6 +130,30 @@ class GoodsController {
     } catch (error) {
       console.log(error);
       return ctx.app.emit('error', deleteGoodsError, ctx);
+    }
+  }
+  async softRemove(ctx, next) {
+    // 操作数据库
+    // 调用service的softRemoveGoods方法，将request.body中通过参数检验的合法商品参数写入数据库
+    try {
+      // 删除数据库中商品信息成功后，获取到返回结果
+      // 需要的参数：商品id
+      const res = await softRemoveGoods(ctx.params.id);
+      if (res) {
+        ctx.body = {
+          code: 0,
+          message: '商品下架成功！',
+          // result: res,
+          // 可以不返回result，因为前端只需要知道状态
+          result: '',
+        };
+      } // 防止前端传入的删除商品id不存在数据库中，导致删除res=false
+      else {
+        return ctx.app.emit('error', invalidGoodsId, ctx);
+      }
+    } catch (error) {
+      console.log(error);
+      return ctx.app.emit('error', softRemoveGoodsError, ctx);
     }
   }
 }

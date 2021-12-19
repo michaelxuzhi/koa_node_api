@@ -2635,7 +2635,7 @@ module.exports = new GoodsService();
 
 - 硬删除：
 
-  - 根据传入的商品id，调用`sequalize`的`destroy`方法
+  - 根据传入的商品id，调用`sequelize`的`destroy`方法
 
   - 路由文件：
 
@@ -2704,5 +2704,48 @@ module.exports = new GoodsService();
 
     ![image-20211219174114984](Readme.assets/image-20211219174114984.png)
 
+- 软删除（商品上架/下架）
+  - 创建数据库记录时，新增`deleteAt` 字段，
 
+---
 
+## 补充：偏执表
+
+- sequelize偏执表**(paranoid表**)介绍：在请求删除该项记录时，不是真正删除该项记录，而是在该项记录的`deleteAt`字段记录下**请求删除的时间戳**。
+
+- 在定义这个数据表模型(define)的时候，需要传入一个新的参数：`paranoid:true`，在model层
+
+  ![image-20211219212911707](Readme.assets/image-20211219212911707.png)
+
+  - 如果这个表已经存在了，记得要把建表的操作重新走一遍，强制创建新表
+  - 建表成功后，会发现`deleteAt`字段已经创建好了
+  - ![image-20211219213319097](Readme.assets/image-20211219213319097.png)
+  - ![image-20211219213231336](Readme.assets/image-20211219213231336.png)
+
+- 创建一个新的记录：`deleteAt`字段为NULL，正常状态
+  ![image-20211219214140341](Readme.assets/image-20211219214140341.png)
+
+---
+
+##  6 商品下架操作
+
+- 方式：POST
+
+- 参数一：商品ID
+- 参数二：行为
+  - off：下架；
+- 路由：/:id/off
+- 注意事项：
+  - 当数据表是偏执表的时候，执行的`delete`操作，其实是将`delete`请求的时间戳，记录在`deleteAt`字段中。但是，该`delete`操作返回的结果和硬删除返回的结果是一样的，返回的是 软删除的记录数量。
+  - 前端的`delete`请求，到model层调用的是`sequelize的destroy方法`。
+  - 如果一个数据表配置了`paranoid: true`，那么无论是软删除还是硬删除，最终调用到`数据库的destroy方法`都是软删除！
+  - 另：如果一个商品已经被软删除了，那么再次`destroy`这个商品id，会显示商品不存在，因为`destroy`会判断`deleteAt`字段的值是否=NULL。只有NULL才认为该商品存在。
+- 接口测试：
+  - 新创建的记录初始数据
+    ![image-20211219214140341](Readme.assets/image-20211219214140341.png)
+  - 接口测试
+    ![image-20211219215718327](Readme.assets/image-20211219215718327.png)
+  - 软删除-实际结果：
+    ![image-20211219215234740](Readme.assets/image-20211219215234740.png)
+
+- 可以看到该id记录的`deleteAt`字段记录了请求删除的时间戳。但这条记录并没有从数据库中删除。

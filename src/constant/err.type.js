@@ -91,12 +91,17 @@ module.exports = {
   // ---------------商品信息不存在-------------//
   invalidGoodsId: {
     code: '10404',
-    message: '商品信息不存在',
+    message: '商品信息不存在/无效的商品id',
     result: '',
   },
   deleteGoodsError: {
     code: '10405',
     message: '商品删除错误',
+    result: '',
+  },
+  softRemoveGoodsError: {
+    code: '10406',
+    message: '商品下架错误',
     result: '',
   },
 };
