@@ -2619,3 +2619,90 @@ module.exports = new GoodsService();
 
   - 修改后：
     ![image-20211212202245296](Readme.assets/image-20211212202245296.png)
+
+---
+
+## 5 删除接口 
+
+- 删除的类型
+
+  - **软删除**：
+    - 给数据库中的记录增加一个额外的字段，当这个字段有值时，表示该记录被舍弃了；
+    - 不轻易去直接删除数据库中的记录时，使用软删除；
+  - **硬删除**：
+    - 直接抹除数据库的记录；
+    - 彻底删除的时候使用硬删除；
+
+- 硬删除：
+
+  - 根据传入的商品id，调用`sequalize`的`destroy`方法
+
+  - 路由文件：
+
+    ```js
+    // 导入GoodsController中的各种方法
+    const { remove } = require('../controller/goods.controller');
+    
+    // 硬删除商品接口
+    goodsRouter.delete('/:id', auth, hadAdminPermission, remove);
+    ```
+
+  - controller文件：
+
+    ```js
+    // 导入goods的service层写入数据库类
+    const { removeGoods } = require('../service/good.service');
+    
+      // 商品信息删除-硬删除
+      async remove(ctx, next) {
+        // 操作数据库
+        // 调用service的removeGoods方法，将request.body中通过参数检验的合法商品参数写入数据库
+        try {
+          // 删除数据库中商品信息成功后，获取到返回结果
+          // 需要的参数：商品id
+          const res = await removeGoods(ctx.params.id);
+          // 如果删除成功，从goods.service那边返回的res=true，否则res=false
+          // 将结果返回出去
+          if (res) {
+            ctx.body = {
+              code: 0,
+              message: '商品信息删除成功！',
+              // result: res,
+              // 可以不返回result，因为前端只需要知道状态
+              result: '',
+            };
+          }
+          // 防止前端传入的删除商品id不存在数据库中，导致删除res=false
+          else {
+            return ctx.app.emit('error', invalidGoodsId, ctx);
+          }
+        } catch (error) {
+          console.log(error);
+          return ctx.app.emit('error', deleteGoodsError, ctx);
+        }
+      }	
+    ```
+
+  - 真正的对数据库进行操作的service层：
+
+    ```js
+      // 删除商品信息接口
+      async removeGoods(id) {
+        // console.log('测试商品删除成功');
+        // 正式删除商品数据，异步
+        const res = await Goods.destroy({
+          where: {
+            id, // 商品id，可写作：id:id
+          },
+        });
+        // 删除商品数据的结果返回res是一个number类型，删除的对应id的记录的数量
+        return res > 0 ? true : false;
+      }
+    ```
+
+  - postman接口-测试：
+
+    ![image-20211219174114984](Readme.assets/image-20211219174114984.png)
+
+
+

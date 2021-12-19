@@ -94,4 +94,9 @@ module.exports = {
     message: '商品信息不存在',
     result: '',
   },
+  deleteGoodsError: {
+    code: '10405',
+    message: '商品删除错误',
+    result: '',
+  },
 };
