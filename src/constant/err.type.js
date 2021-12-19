@@ -104,4 +104,9 @@ module.exports = {
     message: '商品下架错误',
     result: '',
   },
+  restoreGoodsError: {
+    code: '10407',
+    message: '商品上架错误',
+    result: '',
+  },
 };

@@ -10,6 +10,7 @@ const {
   updateGoodsError,
   deleteGoodsError,
   softRemoveGoodsError,
+  restoreGoodsError,
 } = require('../constant/err.type');
 
 // 导入goods的service层写入数据库类
@@ -18,6 +19,7 @@ const {
   updateGoods,
   removeGoods,
   softRemoveGoods,
+  restoreGoods,
 } = require('../service/good.service');
 
 // 控制器中一般是最后一个中间件，所以写不写next都可以
@@ -132,6 +134,7 @@ class GoodsController {
       return ctx.app.emit('error', deleteGoodsError, ctx);
     }
   }
+  // 商品信息删除-软删除
   async softRemove(ctx, next) {
     // 操作数据库
     // 调用service的softRemoveGoods方法，将request.body中通过参数检验的合法商品参数写入数据库
@@ -154,6 +157,28 @@ class GoodsController {
     } catch (error) {
       console.log(error);
       return ctx.app.emit('error', softRemoveGoodsError, ctx);
+    }
+  }
+
+  // 商品信息恢复restore，重置deleteAt字段
+  async restore(ctx, next) {
+    try {
+      // 恢复数据库中商品信息成功后，获取到返回结果
+      // 需要的参数：商品id
+      const res = await restoreGoods(ctx.params.id);
+      if (res) {
+        ctx.body = {
+          code: 0,
+          message: '商品上架成功！',
+          result: '',
+        };
+      } // 防止前端传入的删除商品id不存在数据库中，导致删除res=false
+      else {
+        return ctx.app.emit('error', invalidGoodsId, ctx);
+      }
+    } catch (error) {
+      console.log(error);
+      return ctx.app.emit('error', restoreGoodsError, ctx);
     }
   }
 }
