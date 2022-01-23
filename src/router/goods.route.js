@@ -10,6 +10,7 @@ const {
   remove,
   softRemove,
   restore,
+  findAll,
 } = require('../controller/goods.controller');
 // 导入判断用户授权(auth:是否登录) (hadAdmin:是否管理员)是否正常中间件
 const { auth, hadAdminPermission } = require('../middleware/auth.middleware');
@@ -39,6 +40,8 @@ goodsRouter.post('/:id/off', auth, hadAdminPermission, softRemove);
 // 上架商品接口-restore  deleteAt字段
 goodsRouter.post('/:id/on', auth, hadAdminPermission, restore);
 
+// 获取商品列表
+goodsRouter.get('/', findAll);
 // 导出，给index注册用
 module.exports = goodsRouter;
 

@@ -69,6 +69,32 @@ class GoodsService {
     // console.log(res);
     return res > 0 ? true : false;
   }
-}
 
+  // 查询商品列表接口
+  async findGoods(pageNum, pageSize) {
+    // 未优化前：count 和 findAll 分开执行
+    // 1、获取总数，在获取数据时，需要对deledAt字段进行判断，如果deledAt字段=null，那就表示该商品是上架状态，需要统计返回，sequelize提供了count方法，可以直接获取deledAt字段=null的数据条数
+    // const count = await Goods.count();
+    // 2、获取分页数据
+    // 隐式转换字符串->数字，findAll接收的参数会在后台转换成字符串，如果传入的参数是字符串，则会在字符串的基础上，再增加双引号，导致类型错误
+    // 所以需要在controller层或者service层进行传入参数的类型转换（这里由controller层做）
+    // 偏移量 = （当前页码 - 1）* 每页显示的条数
+    // const offset = (pageNum - 1) * pageSize;
+    // const limit = pageSize;
+    // const rows = await Goods.findAll({ offset, limit });
+
+    // 优化后：count 和 findAll 合并执行：findAndCountAll
+    // 解析：findAndCountAll方法会自动统计数据总数，并且返回符合条件的数据和数据总数
+    const offset = (pageNum - 1) * pageSize;
+    const limit = pageSize;
+    const { count, rows } = await Goods.findAndCountAll({ offset, limit });
+    // 返回的数据格式由文档定义
+    return {
+      pageNum,
+      pageSize,
+      total: count,
+      list: rows,
+    };
+  }
+}
 module.exports = new GoodsService();

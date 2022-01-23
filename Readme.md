@@ -2622,7 +2622,7 @@ module.exports = new GoodsService();
 
 ---
 
-## 5 删除接口 
+## 5 删除商品接口 
 
 - 删除的类型
 
@@ -2782,11 +2782,126 @@ module.exports = new GoodsService();
   - 数据库中id=1的商品记录变化：
     ![image-20211219225052061](Readme.assets/image-20211219225052061.png)
 
+---
 
+# 二十四、商品列表接口
 
+- 获取商品的信息
+- 所有的人都可以获取商品的信息
+  - 管理员
+  - 普通用户
+- 接口设计
+  - 商品信息很多，不可能一次性就将所有的信息都获取过来
+  - 设置pageNum，pageSize
+    - pageNum：当前页码数
+    - pageSize：页面显示的商品数量
+  - 需要设置默认值：pageNum = 1；pageSize = 10
 
+## 1 路由编写
 
-​	
+- 在goods路由中添加与导入controller层处理函数
 
+  ```js
+  const {findAll} = require('../controller/goods.controller');
+  // 获取商品列表
+  goodsRouter.get('/', findAll);
+  ```
 
+## 2 controller层处理函数
+
+```js
+  // 导入goods的service层写入数据库类  
+const {findGoods} = require('../service/good.service');
+  // 商品信息查询
+  async findAll(ctx) {
+    // 1、解析pageNum和pageSize，ctx.request.query中的参数都是字符串，默认值为数字，但是service层使用的findAll方法(model层)需要是数字类型，所以需要进行转换处理后再传入service层（controller层和service层其中一个需要对类型进行转换）
+    const { pageNum = 1, pageSize = 10 } = ctx.request.query;
+    // 2、调用数据库的数据处理的相关方法
+    const res = await findGoods(pageNum * 1, pageSize * 1);
+    // 3、将处理后的数据返回给前端
+    ctx.body = {
+      code: 0,
+      message: '商品列表获取成功！',
+      result: res,
+    };
+  }
+```
+
+- 需要注意的是：参数的类型转换，因为controller层解析的ctx.request.query是字符串类型，在service层中使用的sequelize的count()方法，隐式地将参数转成字符串格式，转换的方式即：在字符串上再加上双引号。所以传递的过去的参数如果是字符串，那么就是变成：`"10" -> ""10""`会出现类型错误
+- 所以要保证controller层或者service层其中一个要先进行参数类型的转换
+- 这里让controller层在传递参数时，进行了数据类型的转换
+
+## 3 service层处理函数
+
+```js
+  // 查询商品列表接口
+  async findGoods(pageNum, pageSize) {
+    // 1、获取总数，在获取数据时，需要对deledAt字段进行判断，如果deledAt字段=null，那就表示该商品是上架状态，需要统计返回，sequelize提供了count方法，可以直接获取deledAt字段=null的数据条数
+    const count = await Goods.count();
+    // 2、获取分页数据
+    // 隐式转换字符串->数字，findAll接收的参数会在后台转换成字符串，如果传入的参数是字符串，则会在字符串的基础上，再增加双引号，导致类型错误
+    // 所以需要在controller层或者service层进行传入参数的类型转换（这里由controller层做）
+    // 偏移量 = （当前页码 - 1）* 每页显示的条数
+    const offset = (pageNum - 1) * pageSize;
+    const limit = pageSize;
+    const rows = await Goods.findAll({ offset, limit });
+    // 返回的数据格式由文档定义
+    return {
+      pageNum,
+      pageSize,
+      total: count,
+      list: rows,
+    };
+  }
+```
+
+- 接收参数：pageNum、pageSize，已经由controller进行了类型转换，所以这里获取到的是数字类型
+- count()方法获取数据库中所有`deleteAt`字段=null的记录的个数，因为如果该商品被下架了，使用了`下架操作中的软删除`，deleteAt字段会记录下架的时间，count方法只返回上架中的商品个数
+  ![image-20220123153746704](Readme.assets/image-20220123153746704.png)
+- 查看一下count()方法的实际mysql语句，可以看到默认去掉了下架商品
+  ![image-20220123153849463](Readme.assets/image-20220123153849463.png)
+- findAll方法也是同上述筛选掉了下架商品
+- offset：分页    limit：限制
+  ![image-20220123154946852](Readme.assets/image-20220123154946852.png)
+- 返回的数据：
+  - pageNum：当前页
+  - pageSize：限制/页显示个数
+  - total：总数
+  - list：符合条件的商品详情
+
+## 4 接口测试
+
+- 带准确查询数值的接口
+
+![image-20220123155237679](Readme.assets/image-20220123155237679.png)
+
+- 默认值查询
+  ![image-20220123155525458](Readme.assets/image-20220123155525458.png)
+- ![image-20220123155549730](Readme.assets/image-20220123155549730.png)
+
+## 5 优化
+
+- sequelize中有一个结合了findAll和count的方法：`findAndCountAll()`
+
+- 那么在service层就可以进行查询优化了
+
+  ```js
+    // 查询商品列表接口
+    async findGoods(pageNum, pageSize) {
+      // 优化后：count 和 findAll 合并执行：findAndCountAll
+      // 解析：findAndCountAll方法会自动统计数据总数，并且返回符合条件的数据和数据总数
+      const offset = (pageNum - 1) * pageSize;
+      const limit = pageSize;
+      const { count, rows } = await Goods.findAndCountAll({ offset, limit });
+      // 返回的数据格式由文档定义
+      return {
+        pageNum,
+        pageSize,
+        total: count,
+        list: rows,
+      };
+    }
+  ```
+
+  
 

@@ -20,6 +20,7 @@ const {
   removeGoods,
   softRemoveGoods,
   restoreGoods,
+  findGoods,
 } = require('../service/good.service');
 
 // 控制器中一般是最后一个中间件，所以写不写next都可以
@@ -160,7 +161,7 @@ class GoodsController {
     }
   }
 
-  // 商品信息恢复restore，重置deleteAt字段
+  // 商品上架，restore重置deleteAt字段
   async restore(ctx, next) {
     try {
       // 恢复数据库中商品信息成功后，获取到返回结果
@@ -180,6 +181,20 @@ class GoodsController {
       console.log(error);
       return ctx.app.emit('error', restoreGoodsError, ctx);
     }
+  }
+
+  // 商品信息查询
+  async findAll(ctx) {
+    // 1、解析pageNum和pageSize，ctx.request.query中的参数都是字符串，默认值为数字，但是service层使用的findAll方法(model层)需要是数字类型，所以需要进行转换处理后再传入service层（controller层和service层其中一个需要对类型进行转换）
+    const { pageNum = 1, pageSize = 10 } = ctx.request.query;
+    // 2、调用数据库的数据处理的相关方法
+    const res = await findGoods(pageNum * 1, pageSize * 1);
+    // 3、将处理后的数据返回给前端
+    ctx.body = {
+      code: 0,
+      message: '商品列表获取成功！',
+      result: res,
+    };
   }
 }
 // 导出
