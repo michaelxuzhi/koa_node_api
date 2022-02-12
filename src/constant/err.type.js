@@ -109,4 +109,10 @@ module.exports = {
     message: '商品上架错误',
     result: '',
   },
+  // ------------购物车参数检验部分-----------//
+  cartFormatError: {
+    code: '10501',
+    message: '购物车参数错误/无效的商品id',
+    result: '',
+  },
 };

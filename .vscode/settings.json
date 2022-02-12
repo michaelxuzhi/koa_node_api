@@ -14,5 +14,6 @@
             "onEditorCreated": "if ($vs.window.activeTextEditor.document.languageId === 'markdown') { $v['button'].enable(); $v['button'].color = ''; } else { $v['button'].disable(); $v['button'].color = 'grey';}",
             "onEditorChanged": "if ($vs.window.activeTextEditor.document.languageId === 'markdown') { $v['button'].enable(); $v['button'].color = ''; } else { $v['button'].disable(); $v['button'].color = 'grey';}"
         }]
-    }
+    },
+    "aiXcoder.showTrayIcon": true
 }

@@ -2,7 +2,7 @@
 const { goodsFormatError } = require('../constant/err.type');
 
 // 商品参数校验中间件
-const validator = async (ctx, next) => {
+const goodsValidator = async (ctx, next) => {
   // 因为已经在app上全局注册了parmameter的参数校验方法
   // 所以这里可以直接使用
   // 参数通过校验时，会走正常逻辑
@@ -24,4 +24,4 @@ const validator = async (ctx, next) => {
   await next();
 };
 
-module.exports = { validator };
+module.exports = { goodsValidator };

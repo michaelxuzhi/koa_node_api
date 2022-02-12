@@ -2208,7 +2208,7 @@ if (!fileTypes.includes(filesFromUser.type)) {
 const goodsRouter = new Router({ prefix: '/goods' });
 
 //导入产品发布参数验证的中间件
-const { validator } = require('../middleware/goods.middleware');
+const { goodsValidator } = require('../middleware/goods.middleware');
 
 // 发布商品接口
 goodsRouter.post('/',auth, hadAdminPermission, calidator)
@@ -2240,7 +2240,7 @@ goodsRouter.post('/',auth, hadAdminPermission, calidator)
     app.use(parameter(app));
     
     
-    // 这里演示的是直接在app.js中使用方式，具体的使用是放在专门的validator中间件文件里处理传进来的参数
+    // 这里演示的是直接在app.js中使用方式，具体的使用是放在专门的goodsValidator中间件文件里处理传进来的参数
     // 使用
     // 需要放在所有的路由处理之前
     // 注册的时候已经将方法都放在实例当中了，所以就可以直接使用
@@ -2262,7 +2262,7 @@ goodsRouter.post('/',auth, hadAdminPermission, calidator)
   const { goodsFomatError } = require('../constant/err.type');
   
   // 商品参数校验中间件
-  const validator = async (ctx, next) => {
+  const goodsValidator = async (ctx, next) => {
     // 因为已经在app上全局注册了parmameter的参数校验方法
     // 所以这里可以直接使用
     // 参数通过校验时，会走正常逻辑
@@ -2283,7 +2283,7 @@ goodsRouter.post('/',auth, hadAdminPermission, calidator)
     await next();
   };
   
-  module.exports = { validator };
+  module.exports = { goodsValidator };
   
   ```
   
@@ -2522,7 +2522,7 @@ module.exports = new GoodsService();
 
   ```js
   // 修改商品接口
-  goodsRouter.put('/:id', auth, hadAdminPermission, validator, update);
+  goodsRouter.put('/:id', auth, hadAdminPermission, goodsValidator, update);
   ```
 
   
@@ -2903,5 +2903,155 @@ const {findGoods} = require('../service/good.service');
     }
   ```
 
+
+
+
+---
+
+# 二十五 添加到购物车接口
+
+## 1 路由编写
+
+- 导入koa-router
+
+  ```js
+  const Router = require('koa-router');
+  ```
+
   
+
+- 实例化路由对象
+
+  ```js
+  // prefix 是前缀
+  const cartRouter = new Router({prefix : '/cart' });
+  ```
+
+  
+
+- 编写路由规则
+
+  ```js
+  // 当前端请求 / 时，交由后续处理函数处理
+  cartRouter.post('/',(ctx)=>{
+      // todo: 后续处理逻辑
+  });
+  ```
+
+  
+
+- 导出路由对象
+
+  ```js
+  module.exports = cartRouter;
+  ```
+
+  
+
+## 2 用户登录校验-中间件添加
+
+- 在编写路由规则时，要考虑到当前端请求这个路径，需要经过哪些验证中间件才能走到最终的处理逻辑
+
+  - `auth` 登录校验：避免用户未登录时可以访问该接口
+    - 这是之前写的登录校验中间件，用户成功登录后，信息会保存在ctx.state.user下，如果需要二次验证，可以使用这个变量
+  - 格式校验：对前端传过来的数据格式做校验
+    - 即使在前端已经做过数据格式的校验，为了安全起见，后端也需要做一遍数据格式的校验
+
+- 导入中间件，在路由规则中添加
+
+  ```js
+  // 导入中间件
+  const { auth } = require('../middleware/auth.middleware');
+  
+  // 使用中间件
+  // 编写路由规则
+  cartRouter.post('/', auth, (ctx)=>{
+      // todo: 后续处理逻辑
+  })
+  ```
+
+## 3 编写 **格式校验** 中间件
+
+- 为购物车模块新增格式校验中间件
+
+### 3.1 新增购物车数据校验中间件
+
+- 数据校验插件：koa-parameter，之前已经安装使用过了，不做赘述
+
+  - koa-parameter的常用简写abbr：
+    ![image-20220212170437149](Readme.assets/image-20220212170437149.png)
+
+  - 这里使用`number`的简写来校验`goods_id`字段
+
+- 错误类型与错误信息的记录
+
+  ```js
+  // err.type.js
+  // ------------购物车参数检验部分-----------//
+    cartFormatError: {
+      code: '10501',
+      message: '购物车参数错误/无效的商品id',
+      result: '',
+    },
+        
+  
+  // errhandler.js
+  case '10501':
+        status = 400;
+        break;
+  ```
+
+  
+
+- 中间件编写：
+
+  ```js
+  // 导入错误类型
+  const { cartFormatError } =require('../constant/err.type');
+  
+  // 购物车模块的数据格式校验器
+  const cartValidator = async(ctx, next) => {
+      try {
+          ctx.verifyParams({
+              // goods_id: { type: 'number', required: true },
+              goods_id : 'number' // 简写
+          })
+      }
+      catch(error){
+          // 对错误的处理，并中断后续操作
+      	// console.log(error);
+      	cartFormatError.result = error;
+      	return ctx.app.emit('error', cartFormatError, ctx);
+      }
+  };
+  
+  // 导出中间件
+  module.exports = { cartValidator };
+  ```
+
+## 4 数据校验-中间件添加
+
+- 导入中间件
+
+- 在路由规则中添加中间件
+
+  ```js
+  // 导入数据校验中间件
+  const { cartValidator } = require('../middleware/cart.middleware');
+  
+  // 添加中间件到路由规则中
+  // 使用中间件
+  // 编写路由规则
+  cartRouter.post('/', auth, cartValidator, (ctx)=>{
+      // todo: 后续处理逻辑
+  })
+  ```
+
+  
+
+## 5 控制器的编写
+
+
+
+
 
